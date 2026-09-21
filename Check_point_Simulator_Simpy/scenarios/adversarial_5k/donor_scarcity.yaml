@@ -1,0 +1,73 @@
+# Exactly 5,000 logical nodes. A single 4,900-node owner must place its durable
+# state on only 100 nodes belonging to other jobs. Useful work is compressed to
+# ten minutes while hazards are raised to retain adversarial incident pressure.
+simulation:
+  seeds: [7]
+  max_sim_s: 10000.0
+  engine: event
+
+cluster:
+  node_count: 5000
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  mega:
+    count: 1
+    ranks: 4900
+    cohorts: 40
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 10
+    checkpoint_every: 2
+    kpeers: 4
+    rpo_s: 60.0
+  be:
+    count: 10
+    ranks: 10
+    cohorts: 1
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 60
+    checkpoint_every: 2
+    kpeers: 4
+    rpo_s: 120.0
+    rates: {nic: 25.0, disk: 3.0}
+
+failures:
+  per_node_per_second: 2.4e-6
+  weights: {process: 0.1, node: 0.45, spot: 0.45}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+preemption:
+  class_prefix: mega
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+  grace_s: 5.0
+
+store:
+  in_gbps: 50.0
+  out_gbps: 50.0
+  disk_gbps: 50.0
+  stream_gbps: 2.0
+
+controller:
+  slot_period_s: 60.0
+
+arms:
+  jit: {baseline: jit}
+  checkfreq: {baseline: checkfreq}
+  gemini: {baseline: gemini}
+  megascale: {baseline: megascale}
+  checknrun: {baseline: checknrun}
+  naive1000_all: {kpeers: true, slots: true, cadence_s: 1000.0}
+  naive10_100:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 10.0
+    cadence_l2_s: 100.0
+    cadence_l3_s: 100.0
+  ideal: {ideal: true, kpeers: false}

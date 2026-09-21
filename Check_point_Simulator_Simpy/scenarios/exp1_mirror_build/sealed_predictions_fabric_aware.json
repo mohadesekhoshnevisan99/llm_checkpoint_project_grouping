@@ -1,0 +1,294 @@
+{
+ "schema": "sealed_predictions/1",
+ "title": "Sealed held-out predictions for the exp1 tc ladder, fabric-aware coupling",
+ "created_utc": "2026-08-01T00:31:55Z",
+ "protocol": "control-plane/design/sim_validation_protocol.md (section 3.3 seal; CL-015)",
+ "scale": "S3",
+ "sim": {
+  "commit": "a397caca852ba3223a650190d1a5d3b4f2ba8afc",
+  "commit_short": "a397cac",
+  "commit_subject": "Fabric-scoped checkpoint<->all-reduce coupling (protocol CL-014), FLAGGED, DEFAULT OFF",
+  "worktree_clean_for_this_run": true,
+  "run_from": "detached git worktree at a397cac (the working tree of the main checkout carries unrelated uncommitted solver work; it was NOT used)"
+ },
+ "models": {
+  "new": {
+   "id": "fabric_aware",
+   "flag": "model.fabric_aware_coupling: true",
+   "sim_commit": "a397caca852ba3223a650190d1a5d3b4f2ba8afc",
+   "command": "python3 scenarios/exp1_arms.py --run --fabric-aware --results-dir results/exp1_mirror_fabric_aware",
+   "results_dir": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/results/exp1_mirror_fabric_aware",
+   "coupling": "a checkpoint transfer stretches job J's collective iff it rides the fabric J's collective rides; magnitude still 1 + tasks (CL-012.D S1+S2 only; S3 intensity NOT implemented)"
+  },
+  "old": {
+   "id": "fabric_blind",
+   "flag": "absent (default)",
+   "sim_commit_of_record": "fda2360",
+   "reproduced_at": "a397caca852ba3223a650190d1a5d3b4f2ba8afc with the flag off",
+   "command": "python3 scenarios/exp1_arms.py --run",
+   "results_dir": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/results/exp1_mirror",
+   "coupling": "any in-flight transfer on one of J's workers multiplies J's collective by (1 + tasks), whichever wire it rides",
+   "regression_check": "flag-OFF at a397cac reproduces every row of the sealed fda2360 results/exp1_mirror/alpha_gamma.json exactly (alpha, gamma, mean_dt_A_s, mean_dt_B_s, mean_stripe_s)"
+  }
+ },
+ "run_config": {
+  "arms": 8,
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "iterations": 600,
+  "warmup_iters": 30,
+  "shard_gb_per_rank": 1.0,
+  "tcp_ceiling_applied": true,
+  "cadence_s": 60.0,
+  "checkpoint_every": 131,
+  "iteration_wall_s": 0.459538462,
+  "ar_base_s": 0.061538462,
+  "note": "CL-004's byte correction (--shard-gb-per-rank 1.0737) is NOT applied. The protocol section 8 requires CL-012 to be applied together with CL-004; it is not, and that is a declared shortfall of this seal."
+ },
+ "held_out_data_access": {
+  "statement": "THESE PREDICTIONS WERE PRODUCED WITHOUT ANY ACCESS TO HELD-OUT HARDWARE DATA. No hardware file, directory listing, summary row or derived statistic for tc1, tc5, tc10, tc25, tc50, for any S2 or S4 cell, or for either positive-control arm was read, fetched or inspected while these numbers were generated.",
+  "hardware_read": [
+   "(off, S3)",
+   "(eth1g, S3)",
+   "(roce_tcp, S3)"
+  ],
+  "hardware_not_read": [
+   "(tc1, S3)",
+   "(tc5, S3)",
+   "(tc10, S3)",
+   "(tc25, S3)",
+   "(tc50, S3)",
+   "all S2",
+   "all S4",
+   "(sat1g_off, S3)",
+   "(sat1g_on, S3)"
+  ],
+  "note_on_tc10": "The protocol's section 3.2 split places (tc10, S3) in the CALIBRATION set. It is sealed here anyway and treated as held out, because no tc10 hardware value has been read by anyone at the time of this seal. Sealing a Cal cell is strictly conservative: it can only make the later comparison harder.",
+  "cluster": "no cluster node was contacted; a campaign is running on them",
+  "unseal_budget": "0 of 3 used; this file is a seal, not an unseal"
+ },
+ "how_to_score": "checkpointing/realgpu_coefficient/compare.py --verdicts --sim-dir <results_dir> --unseal '<reason>'. tau is derived from the hardware CI per protocol section 4.2; nothing in this file fixes tau.",
+ "predictions": {
+  "held_out": {
+   "tc1": {
+    "set": "HO-rate",
+    "stream_gbps": 0.125,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "new_fabric_aware": {
+     "alpha_pp": 3.1129,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.473843,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.110403657,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 16.0
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 3.1129,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.473843,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.110403657,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 16.0
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   },
+   "tc5": {
+    "set": "HO-rate",
+    "stream_gbps": 0.625,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "new_fabric_aware": {
+     "alpha_pp": 0.8575,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.463479,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.157595058,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 3.2
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.8575,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.463479,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.157595058,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 3.2
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   },
+   "tc10": {
+    "set": "calibration-by-protocol, sealed anyway",
+    "stream_gbps": 1.25,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "new_fabric_aware": {
+     "alpha_pp": 0.5756,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.462184,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.163640455,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.6
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.5756,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.462184,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.163640455,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.6
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   },
+   "tc25": {
+    "set": "HO-rate",
+    "stream_gbps": 1.57,
+    "fabric": "roce",
+    "tcp_ceiling_applied": true,
+    "new_fabric_aware": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   },
+   "tc50": {
+    "set": "HO-rate",
+    "stream_gbps": 1.57,
+    "fabric": "roce",
+    "tcp_ceiling_applied": true,
+    "new_fabric_aware": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   }
+  },
+  "calibration": {
+   "off": {
+    "set": "Cal (already compared against hardware; NOT sealed)",
+    "new_fabric_aware": {
+     "alpha_pp": 0.0,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 0.0,
+     "iteration_time_s[A]": 0.459538,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.176098603,
+     "capture_dur_s": null,
+     "stripe_dur_s": null
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.0,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 0.0,
+     "iteration_time_s[A]": 0.459538,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.176098603,
+     "capture_dur_s": null,
+     "stripe_dur_s": null
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   },
+   "eth1g": {
+    "set": "Cal (already compared against hardware; NOT sealed)",
+    "new_fabric_aware": {
+     "alpha_pp": 0.2937,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 0.0,
+     "iteration_time_s[A]": 0.460888,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.169724532,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 21.978
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 4.2406,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.479026,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.087569359,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 21.978
+    },
+    "delta_alpha_pp_new_minus_old": -3.9469
+   },
+   "roce_tcp": {
+    "set": "Cal (already compared against hardware; NOT sealed)",
+    "new_fabric_aware": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "old_fabric_blind": {
+     "alpha_pp": 0.4816,
+     "gamma_pp": 0.0,
+     "p99_stretch_pp": 13.391362,
+     "iteration_time_s[A]": 0.461752,
+     "iteration_time_s[B]": 0.398,
+     "goodput_iter_per_s[A]": 2.165664686,
+     "capture_dur_s": 0.192307692,
+     "stripe_dur_s": 1.2739
+    },
+    "delta_alpha_pp_new_minus_old": 0.0
+   }
+  }
+ },
+ "discriminating_claim": {
+  "text": "Across the tc ladder (shared RoCE NIC, shaped 1 -> 50 Gbit/s) the two models make IDENTICAL predictions, because CL-012.D S3 (intensity) was not implemented. Both are monotone decreasing in shaped rate (H_dur). The tc ladder therefore CANNOT discriminate the fabric-aware model from the fabric-blind one: it can only falsify or fail to falsify H_dur, which both share.",
+  "where_the_models_differ": [
+   "(eth1g, S3)"
+  ],
+  "consequence": "If hardware alpha is flat and ~0 across the ladder, BOTH models fail together on the ladder and neither is shown better by it. The only cell on which this change can be scored as an improvement is eth1g, which is a CALIBRATION cell -- i.e. this change has, as of this seal, no held-out evidence for it at S3. Its held-out exposure is at S2/S4 and the positive control."
+ }
+}

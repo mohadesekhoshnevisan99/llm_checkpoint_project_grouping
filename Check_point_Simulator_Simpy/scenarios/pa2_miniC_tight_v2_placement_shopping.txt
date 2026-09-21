@@ -1,0 +1,19 @@
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Objective contains too many subexpressions. Consider vectorizing your CVXPY code to speed up compilation.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+wrote scenarios/pa2_miniC_tight_v2_placement_policy.json
+mega         [injob   ] k=1 every=1 (solved 60.16s, f2=0.016623Hz) store_every=5 slot=21.0s pred_flush=0.08s | failure-cost 0.0571 s/s -> halving lambda worth 7.31 GPU-s/s
+fxl          [injob   ] k=1 every=3 (solved 100.78s, f2=0.011053Hz) store_every=10 slot=0.0s pred_flush=0.64s | failure-cost 0.0181 s/s -> halving lambda worth 0.58 GPU-s/s
+frontier     [injob   ] k=1 every=7 (solved 139.41s, f2=0.00709Hz) store_every=15 slot=13.0s pred_flush=0.32s | failure-cost 0.0055 s/s -> halving lambda worth 0.04 GPU-s/s
+standard     [injob   ] k=1 every=9 (solved 139.67s, f2=0.007339Hz) store_every=20 slot=15.0s pred_flush=0.16s | failure-cost 0.0027 s/s -> halving lambda worth 0.01 GPU-s/s
+be           [local   ] k=0 every=3 (solved 35.17s, f2=0.033069Hz) store_every=3 slot=1.0s pred_flush=0.53s | failure-cost 0.0837 s/s -> halving lambda worth 0.08 GPU-s/s
+[placement] mode=solve (search: 2 passes, 19 solves, converged=True)
+  mega         -> injob    |  crossjob=3.10870  *injob=3.10857   local=3.46680
+  fxl          -> injob    |  crossjob=3.10958  *injob=3.10857   local=3.23432
+  frontier     -> injob    |  crossjob=3.11029  *injob=3.10857   local=3.13803
+  standard     -> injob    |  crossjob=3.10942  *injob=3.10857   local=3.12263
+  be           -> local    |  crossjob=3.14970   injob=3.85432  *local=3.10857
+solver: {"method": "async_gp_v2", "iterations": 41, "objective": 3.108568943350089, "B": [16960.0, 2544.0, 60.0], "overload_x": 0.13, "model_version": "v2", "dependency_api": "bounded", "symmetry_classes": 0, "v2": {"donor_duty_util": 0.0, "fixed_point_drift": 0.0, "alpha": 0.043, "beta": 1.0, "eta": 0.9, "gamma": 0.0, "gamma_provisional": true, "peerdram_option": false, "gamma_dram": 0.0, "gamma_dram_doc": 1.2e-05, "dram_host_slots": 1, "drain_bytes_rate": 0.0, "store_binding": true, "duty_capacity_slots": 763.2, "store_demand_gbps": 15.41, "B3_store_gbps": 60.0}, "placement": {"mode": "solve", "by_class": {"mega": "injob", "fxl": "injob", "frontier": "injob", "standard": "injob", "be": "local"}, "shopping": {"mega": {"crossjob": 3.108704, "injob": 3.108569, "local": 3.466799}, "fxl": {"crossjob": 3.10958, "injob": 3.108569, "local": 3.234322}, "frontier": {"crossjob": 3.110291, "injob": 3.108569, "local": 3.138028}, "standard": {"crossjob": 3.10942, "injob": 3.108569, "local": 3.12263}, "be": {"crossjob": 3.149704, "injob": 3.854318, "local": 3.108569}}, "search_passes": 2, "search_solves": 19, "search_converged": true}}
+[v2] donor-duty util u=0.0 (cap 763.2 slots, fixed-point drift 0.0); store demand 15.41/60.0 GB/s (binding=True); tail alpha=0.043 beta=1.0
+[v2] donor hosting tax OFF (gamma=0) (measured donor-drain rate 0 -> not fed; pass --measured-drain-gbps); term implemented, PROVISIONAL until gamma is calibrated.

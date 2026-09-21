@@ -1,0 +1,114 @@
+# Exactly 5,000 logical nodes. Preserves the mega-dominant 66% fleet geometry,
+# but compresses useful work to ten minutes and accelerates organic failures
+# and best-effort eviction so the short run still contains many incidents.
+simulation:
+  seeds: [7]
+  max_sim_s: 10000.0
+  engine: event
+
+cluster:
+  node_count: 5000
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  fxl:
+    count: 3
+    ranks: 208
+    cohorts: 13
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 20
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+  frontier:
+    count: 12
+    ranks: 52
+    cohorts: 7
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 90.0
+  standard_g:
+    count: 15
+    ranks: 13
+    cohorts: 3
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 40
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+  standard_c:
+    count: 15
+    ranks: 13
+    cohorts: 3
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 40
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates: {nic: 25.0, disk: 3.0}
+  be:
+    count: 28
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 60
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates: {nic: 25.0, disk: 3.0}
+  mega:
+    count: 1
+    ranks: 3306
+    cohorts: 26
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 10
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+
+failures:
+  per_node_per_second: 9.6e-6
+  weights: {process: 0.2, node: 0.4, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+preemption:
+  class_prefix: be
+  every_s: 10.0
+  model: per_job_hazard
+  seed: 3
+  grace_s: 5.0
+
+store:
+  in_gbps: 50.0
+  out_gbps: 50.0
+  disk_gbps: 50.0
+  stream_gbps: 2.0
+
+controller:
+  slot_period_s: 60.0
+
+arms:
+  jit: {baseline: jit}
+  checkfreq: {baseline: checkfreq}
+  gemini: {baseline: gemini}
+  megascale: {baseline: megascale}
+  checknrun: {baseline: checknrun}
+  naive1000_all: {kpeers: true, slots: true, cadence_s: 1000.0}
+  naive10_100:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 10.0
+    cadence_l2_s: 100.0
+    cadence_l3_s: 100.0
+  ideal: {ideal: true, kpeers: false}

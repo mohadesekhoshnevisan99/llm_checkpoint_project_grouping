@@ -1,0 +1,130 @@
+# mini-C PARALLELISM harness (Mark 2026-07-23, D2): the fast-iteration mini-C
+# cluster physics (760 nodes, donor-edge mega, eviction-dominated be, wave
+# contention) but with the per-node "magic" checkpoint_gb_per_rank REPLACED by a
+# per-class PARALLELISM CONFIG (model: block) sized to real GPU counts. The shard
+# each rank writes is computed by checkpointing/parallelism.py from the config,
+# NOT hand-set. ITERATION/ABLATION ONLY — never paper numbers.
+#
+# Per-class configs (shard math in checkpointing/parallelism.py; the dedup-
+# savings table + per-GPU sizes are emitted by the ablation aggregate.py ->
+# results/miniC_parallelism/dedup.csv):
+#   class     GPUs  model    TP  PP  DP  ZeRO  per-GPU shard (as-cfg)  zero0 HBM
+#   mega      2048  405B      8  16  16   1     15.03 GB               50.6 GB
+#   fxl        512   70B      8   4  16   1     10.39 GB               35.0 GB
+#   frontier   128   30B      4   2  16   0     60.00 GB (=zero0)      60.0 GB
+#   standard    64   13B      2   2  16   0     52.00 GB (=zero0)      52.0 GB
+#   be          16    3B      1   1  16   0     48.00 GB (=zero0)      48.0 GB
+# Every zero0 per-GPU state <= 80 GB HBM (be reduced from the 7B sketch: 7B zero0
+# = 112 GB > 80 GB). The ablation driver (run_miniC_parallelism.py) sweeps a
+# GLOBAL zero_stage in {0,1,3} over these dims; the per-class zero_stage below is
+# the natural/as-configured baseline. checkpoint_gb_per_rank is DERIVED from
+# model: at load (parallelism.apply_model_shards) — do not hand-set it here.
+simulation:
+  seeds: [7, 11, 13, 17, 23]
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    model: {name: llama-405B, params_b: 405, tp: 8, pp: 16, dp: 16, zero_stage: 1}
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    model: {name: llama-70B, params_b: 70, tp: 8, pp: 4, dp: 16, zero_stage: 1}
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    model: {name: yi-30B, params_b: 30, tp: 4, pp: 2, dp: 16, zero_stage: 0}
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    model: {name: llama-13B, params_b: 13, tp: 2, pp: 2, dp: 16, zero_stage: 0}
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    model: {name: llama-3B, params_b: 3, tp: 1, pp: 1, dp: 16, zero_stage: 0}
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:
+    process: 0.4
+    reboot: 0.15
+    node: 0.05
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  # ideal = failure-free, checkpoint-free comparator: the per-class overhead-%
+  # denominator (aggregate script). Deterministic; independent of zero_stage.
+  ideal:     {ideal: true}
+  # baseline arms run directly (--arm); ours+dedup / ours-no-dedup / perjob run
+  # from solved policies (--policy) generated per zero_stage by the driver.
+  gemini:    {baseline: gemini}
+  checkfreq: {baseline: checkfreq}
+  megascale: {baseline: megascale}
+  jit:       {baseline: jit}
+  # best hand-set tiered cadence WITH peer donors (L1/L2/L3 = 500/1100/2900 s)
+  handset:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 500.0
+    cadence_l2_s: 1100.0
+    cadence_l3_s: 2900.0

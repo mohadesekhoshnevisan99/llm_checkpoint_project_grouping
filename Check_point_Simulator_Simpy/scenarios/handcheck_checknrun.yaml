@@ -1,0 +1,32 @@
+# handcheck_checknrun.yaml — Check-N-Run (NSDI'22) differential+quantized store
+# checkpointing signature. m=1 (cohorts==ranks), organic failures on. The paper
+# cadence is 30 min; the arm override cadence_s=60 shrinks it to fit a small
+# horizon (the byte-scaling mechanism under test is cadence-independent).
+#
+# SIGNATURE to hand-check in the trace:
+#   * store writes carry 0.1x the raw bytes: shard 10 GB -> 1.0 GB store PUTs
+#     (path "store", destination __store__), nothing on donors or local SSD;
+#   * cadence: wall = 10 + 2*(1/2)*4/1.85 = 12.16 s -> every round(60/12.16)=5
+#     iterations, so flush iterations are multiples of 5;
+#   * recovery after node/spot loss fetches baseline+incrementals = 2x the
+#     compressed size (0.2x raw = 2.0 GB) from the store, then restores the
+#     FULL 10 GB state DRAM->GPU; failures before the first flush -> initial.
+simulation:
+  seeds: [7]
+  max_sim_s: 900.0
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+classes:
+  rec: {count: 2, ranks: 2, cohorts: 2, checkpoint_gb_per_rank: 10.0, iteration_seconds: 10.0, iterations: 24, checkpoint_every: 2, kpeers: 2, rpo_s: 120.0}
+failures:
+  per_node_per_second: 4.0e-3
+  weights: {process: 0.3, node: 0.4, spot: 0.3}
+  restart_seconds: {process: 5.0, node: 10.0, spot: 15.0}
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 1.0}
+controller: {slot_period_s: 30.0}
+arms:
+  checknrun: {baseline: checknrun, cadence_s: 60}

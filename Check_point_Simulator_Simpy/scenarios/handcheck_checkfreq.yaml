@@ -1,0 +1,32 @@
+# handcheck_checkfreq.yaml — CheckFreq (FAST'21) profiled-cadence signature.
+# Two classes with DIFFERENT shard sizes -> DIFFERENT profiled cadences, showing
+# the per-job adaptive tuning. m=1 (cohorts==ranks), organic failures on.
+#
+# SIGNATURE to hand-check in the trace:
+#   * checkpoint_every per job = ceil(capture_s / (0.035 * iter_wall_s)) so the
+#     visible (snapshot) overhead stays <= 3.5%. With gpu_cpu=5.0, iter_s=3.0,
+#     gradient=0.5, nic=2.0 (ar=0.25 -> wall=3.25):
+#       heavy (shard 3.0, capture 0.60 s): ceil(0.60/(0.035*3.25)) = 6
+#       lite  (shard 1.5, capture 0.30 s): ceil(0.30/(0.035*3.25)) = 3
+#   * persists go to the OWN local SSD only (path "local_fallback"); no donors,
+#     no store; process failures recover from local SSD, node loss -> initial.
+simulation:
+  seeds: [7]
+  max_sim_s: 400.0
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 5.0
+  network_bandwidth_gbps: 2.0
+  local_ssd_bandwidth_gbps: 1.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  heavy: {count: 1, ranks: 2, cohorts: 2, checkpoint_gb_per_rank: 3.0, iteration_seconds: 3.0, iterations: 24, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+  lite:  {count: 1, ranks: 2, cohorts: 2, checkpoint_gb_per_rank: 1.5, iteration_seconds: 3.0, iterations: 24, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+failures:
+  per_node_per_second: 8.0e-3
+  weights: {process: 0.6, node: 0.4, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 10.0, spot: 15.0}
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 1.0}
+controller: {slot_period_s: 30.0}
+arms:
+  checkfreq: {baseline: checkfreq}

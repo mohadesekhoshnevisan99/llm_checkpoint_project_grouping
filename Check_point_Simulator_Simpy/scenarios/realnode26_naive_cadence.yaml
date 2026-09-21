@@ -1,0 +1,117 @@
+# NAIVE fixed wall-clock cadences (Sam's request): every 10s / 100s / 1000s,
+# ALL THREE tiers on the same interval, every job — the 'one number for the
+# whole cluster' policy. Compare against the solved policy (--policy).
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+cluster:
+  node_count: 30000
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  fxl:
+    count: 3
+    ranks: 1024
+    cohorts: 64
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 240
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+  frontier:
+    count: 12
+    ranks: 256
+    cohorts: 32
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 360
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 90.0
+  standard_g:
+    count: 15
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 480
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+  standard_c:
+    count: 15
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 480
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates:
+      nic: 25.0
+      disk: 3.0
+  be:
+    count: 28
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 720
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates:
+      nic: 25.0
+      disk: 3.0
+  mega:
+    count: 1
+    ranks: 16384
+    cohorts: 128
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 120
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+failures:
+  per_node_per_second: 4.5e-08
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 120.0
+  seed: 3
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 2.0
+controller:
+  slot_period_s: 60.0
+arms:
+  naive10s:
+    kpeers: true
+    slots: true
+    cadence_s: 10
+  naive100s:
+    kpeers: true
+    slots: true
+    cadence_s: 100
+  naive1000s:
+    kpeers: true
+    slots: true
+    cadence_s: 1000

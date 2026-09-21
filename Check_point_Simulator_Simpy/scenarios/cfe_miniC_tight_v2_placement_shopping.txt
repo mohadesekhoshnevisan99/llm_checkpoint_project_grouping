@@ -1,0 +1,30 @@
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Objective contains too many subexpressions. Consider vectorizing your CVXPY code to speed up compilation.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+[crossjob-first] rule: FEASIBLE (duty: per-wave donor cap k_wave >= 2; rack: k distinct non-owner donor racks) classes choose crossjob UNLESS an alternative beats crossjob's priced objective by more than epsilon=0.01 RELATIVE at the descent's current assignment (exit gate); infeasible -> cheapest of ['injob', 'local'] by the priced objective regardless of margin.
+  mega         INFEASIBLE | duty: k_req=6 k_wave_cap=1 k_enact=1 duty_ok=False | rack_ok=vacuous (no rack pricing) -> chosen=injob
+               fallback comparison: *injob=3.112214   local=3.470447
+  fxl          FEASIBLE  | duty: k_req=6 k_wave_cap=10 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+               epsilon comparison (final assignment): *crossjob=3.112214   injob=3.111147 (margin +0.0343%)   local=3.236901 (margin -4.0064%)
+  frontier     FEASIBLE  | duty: k_req=6 k_wave_cap=45 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+               epsilon comparison (final assignment): *crossjob=3.112214   injob=3.110452 (margin +0.0566%)   local=3.139911 (margin -0.8900%)
+  standard     FEASIBLE  | duty: k_req=6 k_wave_cap=93 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+               epsilon comparison (final assignment): *crossjob=3.112214   injob=3.111337 (margin +0.0282%)   local=3.125398 (margin -0.4236%)
+  be           FEASIBLE  | duty: k_req=6 k_wave_cap=379 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=local
+               epsilon comparison (final assignment):  crossjob=3.153544   injob=3.857963 (margin -22.3374%)  *local=3.112214 (margin +1.3106%)
+wrote scenarios/cfe_miniC_tight_v2_placement_policy.json
+mega         [injob   ] k=1 every=1 (solved 60.16s, f2=0.016623Hz) store_every=5 slot=21.0s pred_flush=0.08s | failure-cost 0.0571 s/s -> halving lambda worth 7.31 GPU-s/s
+fxl          [crossjob] k=6 every=3 (solved 101.74s, f2=0.011053Hz) store_every=10 slot=0.0s pred_flush=0.89s | failure-cost 0.0182 s/s -> halving lambda worth 0.58 GPU-s/s
+frontier     [crossjob] k=6 every=7 (solved 145.2s, f2=0.00709Hz) store_every=15 slot=13.0s pred_flush=0.44s | failure-cost 0.0056 s/s -> halving lambda worth 0.04 GPU-s/s
+standard     [crossjob] k=6 every=10 (solved 145.48s, f2=0.006605Hz) store_every=20 slot=15.0s pred_flush=0.22s | failure-cost 0.0029 s/s -> halving lambda worth 0.01 GPU-s/s
+be           [local   ] k=0 every=3 (solved 35.17s, f2=0.033069Hz) store_every=3 slot=1.0s pred_flush=0.53s | failure-cost 0.0837 s/s -> halving lambda worth 0.08 GPU-s/s
+[placement] mode=solve (search: 2 passes, 17 solves, converged=True)
+  mega         -> injob    | *injob=3.11221   local=3.47045
+  fxl          -> crossjob | *crossjob=3.11221   injob=3.11115   local=3.23690
+  frontier     -> crossjob | *crossjob=3.11221   injob=3.11045   local=3.13991
+  standard     -> crossjob | *crossjob=3.11221   injob=3.11134   local=3.12540
+  be           -> local    |  crossjob=3.15354   injob=3.85796  *local=3.11221
+solver: {"method": "async_gp_v2", "iterations": 47, "objective": 3.112213844390645, "B": [16960.0, 2544.0, 60.0], "overload_x": 0.13, "model_version": "v2", "dependency_api": "bounded", "symmetry_classes": 0, "v2": {"donor_duty_util": 0.0062, "fixed_point_drift": 3.3961659498432314e-05, "alpha": 0.043, "beta": 1.0, "eta": 0.9, "gamma": 0.0, "gamma_provisional": true, "peerdram_option": false, "gamma_dram": 0.0, "gamma_dram_doc": 1.2e-05, "dram_host_slots": 1, "drain_bytes_rate": 0.0, "store_binding": true, "duty_capacity_slots": 763.2, "store_demand_gbps": 15.41, "B3_store_gbps": 60.0}, "placement": {"mode": "solve", "by_class": {"mega": "injob", "fxl": "crossjob", "frontier": "crossjob", "standard": "crossjob", "be": "local"}, "shopping": {"mega": {"injob": 3.112214, "local": 3.470447}, "fxl": {"crossjob": 3.112214, "injob": 3.111147, "local": 3.236901}, "frontier": {"crossjob": 3.112214, "injob": 3.110452, "local": 3.139911}, "standard": {"crossjob": 3.112214, "injob": 3.111337, "local": 3.125398}, "be": {"crossjob": 3.153544, "injob": 3.857963, "local": 3.112214}}, "search_passes": 2, "search_solves": 17, "search_converged": true, "placement_mode": "crossjob-first", "min_stripe": 2, "fallback_menu": ["injob", "local"], "feasibility": {"mega": {"k_req": 6, "k_wave_cap": 1, "k_enact": 1, "duty_ok": false, "donor_racks": null, "rack_ok": true, "feasible": false}, "fxl": {"k_req": 6, "k_wave_cap": 10, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "frontier": {"k_req": 6, "k_wave_cap": 45, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "standard": {"k_req": 6, "k_wave_cap": 93, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "be": {"k_req": 6, "k_wave_cap": 379, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}}, "cf_epsilon": 0.01}}
+[v2] donor-duty util u=0.0062 (cap 763.2 slots, fixed-point drift 3.3961659498432314e-05); store demand 15.41/60.0 GB/s (binding=True); tail alpha=0.043 beta=1.0
+[v2] donor hosting tax OFF (gamma=0) (measured donor-drain rate 0 -> not fed; pass --measured-drain-gbps); term implemented, PROVISIONAL until gamma is calibrated.

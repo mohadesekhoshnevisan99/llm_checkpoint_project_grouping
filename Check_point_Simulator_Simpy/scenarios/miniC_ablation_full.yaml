@@ -1,0 +1,202 @@
+# FULL 15-arm ablation staircase at mini-C scale (debug, not paper): cadences = SetupC/4
+# (horizon ratio), preserving cadence:eviction:failure relationships. Sam 2026-07-20.
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:                    # reboot spec 2026-07-21: split old node:0.20 -> 3:1
+    process: 0.4
+    reboot: 0.15              # DRAM lost, local disk (own SSD + hosted) SURVIVES
+    node: 0.05               # true node replace: all node state gone
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0            # source-backed 120-300 s (Delta SC'25 / GCP / Meta)
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  ideal:                        # analytic floor: compute + all-reduce only, no
+    ideal: true                 # checkpoints, no failures — per-class overhead denominator
+  naive50:
+    kpeers: false
+    cadence_s: 12.5
+  naive100:
+    kpeers: false
+    cadence_s: 25.0
+  naive200:
+    kpeers: false
+    cadence_s: 50.0
+  naive500:
+    kpeers: false
+    cadence_s: 125.0
+  naive1000:
+    kpeers: false
+    cadence_s: 250.0
+  naive2000:
+    kpeers: false
+    cadence_s: 500.0
+  semi_fast:
+    kpeers: false
+    cadence_l1_s: 25.0
+    cadence_l2_s: 75.0
+    cadence_l3_s: 125.0
+  peer_semi_fast:
+    kpeers: true
+    random_phases: true
+    cadence_l1_s: 25.0
+    cadence_l2_s: 75.0
+    cadence_l3_s: 125.0
+  peerph_semi_fast:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 25.0
+    cadence_l2_s: 75.0
+    cadence_l3_s: 125.0
+  semi100:
+    kpeers: false
+    cadence_l1_s: 25.0
+    cadence_l2_s: 125.0
+    cadence_l3_s: 625.0
+  peer_semi100:
+    kpeers: true
+    random_phases: true
+    cadence_l1_s: 25.0
+    cadence_l2_s: 125.0
+    cadence_l3_s: 625.0
+  peerph_semi100:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 25.0
+    cadence_l2_s: 125.0
+    cadence_l3_s: 625.0
+  semi300:
+    kpeers: false
+    cadence_l1_s: 75.0
+    cadence_l2_s: 250.0
+    cadence_l3_s: 750.0
+  peer_semi300:
+    kpeers: true
+    random_phases: true
+    cadence_l1_s: 75.0
+    cadence_l2_s: 250.0
+    cadence_l3_s: 750.0
+  peerph_semi300:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 75.0
+    cadence_l2_s: 250.0
+    cadence_l3_s: 750.0
+  semi500:
+    kpeers: false
+    cadence_l1_s: 125.0
+    cadence_l2_s: 275.0
+    cadence_l3_s: 725.0
+  peer_semi500:
+    kpeers: true
+    random_phases: true
+    cadence_l1_s: 125.0
+    cadence_l2_s: 275.0
+    cadence_l3_s: 725.0
+  peerph_semi500:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 125.0
+    cadence_l2_s: 275.0
+    cadence_l3_s: 725.0
+
+  # named-system baselines on the harness (Sam 2026-07-22): same physics
+  # (reboot weights), same seeds — reboot helps CheckFreq (local SSD survives)
+  # and Gemini (replica survives); fairness requires showing it.
+  gemini:
+    baseline: gemini
+  checkfreq:
+    baseline: checkfreq
+  checknrun:
+    baseline: checknrun
+  megascale:
+    baseline: megascale
+  jit:
+    baseline: jit

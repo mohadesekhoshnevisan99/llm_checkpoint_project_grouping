@@ -1,0 +1,121 @@
+# mini-C CHURN: Stage 3 job arrivals + controller re-solve (Mark D7 dynamic half).
+# The cluster fills in STAGES so the active composition -- and therefore the donor
+# supply every job sees -- changes over the run:
+#   t=0    standard + be running (donor-scarce: only each other can host)
+#   t=150  frontier arrives
+#   t=300  fxl arrives
+#   t=600  MEGA arrives into the now-busy cluster (the headline event: it consumes
+#          donor duty, so the coupled solve should SHRINK everyone else's k)
+# Before a job arrives its nodes exist but cannot donate, and its failure clock is
+# stopped. ours_resolve re-solves the cost model at every arrival/departure and
+# enacts the new per-class cadence/k on running jobs; ours_frozen keeps ONE static
+# full-cluster solve. The A/B delta = the value of dynamically recalculating.
+# ITERATION ONLY -- never paper numbers (same disclaimer as miniC.yaml).
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+    arrival_s: 600.0
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+    arrival_s: 300.0
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+    arrival_s: 150.0
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+    arrival_s: 0.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+    arrival_s: 0.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+arms:
+  ours_frozen:                    # ONE static full-cluster solve, never updated
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    resolve: false
+  ours_resolve:                   # re-solve per active composition on every event
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    resolve: true

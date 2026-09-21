@@ -1,0 +1,12 @@
+# SEALED PREDICTION artifact -- Jetstream2 verify run, cell F2 (node_reboot).
+# Written by make_seal.py from cell 1's constants phase, before the ladder ran.
+# ONE injected event at t = 120 s into the 360 s window, target = job A's rank-0
+# node (harness label node30 = js2c*-g1).
+provenance:
+  label: SEALED
+  built_utc: "2026-09-06T23:12:57Z"
+  source: js2_verify_2026-09-03/constants_cell1/block2/F2
+  hardware_event_type: node_reboot
+  window_s: 360.0
+events:
+  - {t_s: 120.0, type: node_loss, target: node30}

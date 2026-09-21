@@ -1,0 +1,130 @@
+# mini-C L1.5 PROFILE (ii): HIGH-NIC FRONT-END — 400 Gb PER DIRECTION
+# = 50 GB/s out AND 50 GB/s in, full duplex (l15_peer_dram_spec.md goal 2d;
+# vs profile (i)'s current 50/25 in miniC_l15.yaml). This is the napkin's WIN
+# REGION: the L2 stripe is disk-bound at every k (k*6 <= 36 < NIC_out 50)
+# while the L1.5 stripe lands in donor DRAM at NIC_in:
+#   k=6 classes: d2 = s/36 vs d1.5 = s/50           => 1.4x faster waves;
+#   k<=3 (mega): d2 = s/(k*6) vs d1.5 = s/50        => up to 4.2x.
+# Pre-registered: mega/fxl waves 1.4-4.2x faster, TOT gain iff the freshness
+# (f1.5 > f2) materializes; L1.5 must pay its gamma_dram bill or lose the
+# class. Everything else is miniC_l15.yaml verbatim.
+#
+# L1.5 capacity (model:): 1 resident piece per donor rank; byte cap = 2x the
+# largest class piece at its configured stripe (fxl 32 GB / k=6 = 5.33 GB ->
+# 10.7 GB), per l15_peer_dram_spec.md defaults, stated explicitly.
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+model:
+  dram_host_slots: 1
+  dram_host_gb: 10.7
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+    rates: {nic: 50.0}   # 400 Gb/direction: 50 out AND 50 in
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+    rates: {nic: 50.0}   # 400 Gb/direction: 50 out AND 50 in
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+    rates: {nic: 50.0}   # 400 Gb/direction: 50 out AND 50 in
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+    rates: {nic: 50.0}   # 400 Gb/direction: 50 out AND 50 in
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+    rates: {nic: 50.0}   # 400 Gb/direction: 50 out AND 50 in
+failures:
+  per_node_per_second: 3.0e-06
+  weights:                    # reboot spec 2026-07-21: split old node:0.20 -> 3:1
+    process: 0.4
+    reboot: 0.15              # DRAM lost, local disk (own SSD + hosted) SURVIVES
+    node: 0.05               # true node replace: all node state gone
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0            # source-backed 120-300 s (Delta SC'25 / GCP / Meta)
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  # best hand-set tiered cadence WITH peer donors (L1/L2/L3 = 500/1100/2900 s,
+  # the reboot-staircase winner; same shape as miniC_parallelism's handset)
+  handset:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 500.0
+    cadence_l2_s: 1100.0
+    cadence_l3_s: 2900.0
+  # ours / ours+L1.5 run from solved policies (--policy); see
+  # ../checkpointing/multilevel/results/miniC_l15/RUNBOOK.md

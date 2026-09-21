@@ -1,0 +1,6 @@
+serializable-simpy>=0.0.3
+pyyaml>=6.0
+plotly>=5.20
+scipy>=1.15,<2
+pytest>=8.0
+ruff>=0.6

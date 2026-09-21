@@ -1,0 +1,321 @@
+[simulation]
+seed = 17
+iterations = 20
+
+[cluster]
+node_count = 1000044
+cpu_cores_per_node = 1
+cpu_memory_gb = 3.75
+gpus_per_node = 1
+gpu_memory_gb = 80.0
+gpu_cpu_bandwidth_gbps = 31.5
+network_bandwidth_gbps = 25.0
+communication_launch_seconds = 0.01
+local_ssd_bandwidth_gbps = 4.0
+object_store_bandwidth_gbps = 8.0
+object_store_concurrency = 4
+
+[failures]
+probability_per_second = 0.002
+process_weight = 0.50
+node_weight = 0.30
+spot_weight = 0.20
+process_restart_seconds = 3.0
+node_restart_seconds = 8.0
+spot_restart_seconds = 15.0
+
+# Four full-model replicas. There are no pipeline stage transfers.
+[[jobs]]
+id = "data-parallel-13b"
+strategy = "data_parallel"
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 26.0
+gradient_gb = 26.0
+activation_gb = 2.0
+
+[jobs.timing]
+forward_seconds = 5.0
+backward_seconds = 9.0
+optimizer_seconds = 1.0
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 30.0
+upload_gpu_slowdown = 1.15
+
+# One model split over four sequential pipeline stages.
+[[jobs]]
+id = "pipeline-parallel-70b"
+strategy = "pipeline_parallel"
+failure_rate = 0.004
+data_parallel_replicas = 1
+pipeline_stages = 4
+microbatches = 4
+
+[jobs.model]
+weights_gb = 140.0
+gradient_gb = 140.0
+activation_gb = 4.0
+
+[jobs.timing]
+forward_seconds = 11.0
+backward_seconds = 19.0
+optimizer_seconds = 2.0
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 152.0
+upload_gpu_slowdown = 1.15
+
+# Two pipeline stages replicated over two data-parallel groups.
+[[jobs]]
+id = "hybrid-30b"
+strategy = "hybrid"
+data_parallel_replicas = 2
+pipeline_stages = 2
+microbatches = 4
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 68.0
+upload_gpu_slowdown = 1.15
+
+# One million data-parallel ranks execute as one synchronized cohort. Only
+# ranks that fail are expanded into individual workers in the dashboard.
+[[jobs]]
+id = "data-ssd-peer-1m"
+strategy = "data_parallel"
+failure_rate = 0.00000001
+data_parallel_replicas = 1000000
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "ssd_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+# CPU-tiered replicas keep checkpoints in local and adjacent-peer host DRAM.
+[[jobs]]
+id = "data-cpu-tiered-30b"
+strategy = "data_parallel"
+failure_rate = 0.004
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "cpu_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+# SSD-tiered replicas persist CPU-managed chunks to local and peer SSD.
+[[jobs]]
+id = "data-ssd-tiered-30b"
+strategy = "data_parallel"
+failure_rate = 0.004
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "ssd_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+# Matching failure-free CPU and SSD baselines.
+[[jobs]]
+id = "data-cpu-tiered-30b-no-fail"
+strategy = "data_parallel"
+failure_rate = 0.0
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "cpu_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+[[jobs]]
+id = "data-ssd-tiered-30b-no-fail"
+strategy = "data_parallel"
+failure_rate = 0.0
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "ssd_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+# Adjacent ranks (0/1 and 2/3) retain each other's shard in DRAM and SSD.
+[[jobs]]
+id = "pipeline-paired-tiered-30b"
+strategy = "pipeline_parallel"
+failure_rate = 0.004
+data_parallel_replicas = 1
+pipeline_stages = 4
+microbatches = 4
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "paired_tiered"
+every = 2
+size_gb = 68.0
+chunk_gb = 4.0
+
+# Failure-free baselines use the same shapes and timings for comparison.
+[[jobs]]
+id = "data-parallel-13b-no-fail"
+strategy = "data_parallel"
+failure_rate = 0.0
+data_parallel_replicas = 4
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 26.0
+gradient_gb = 26.0
+activation_gb = 2.0
+
+[jobs.timing]
+forward_seconds = 5.0
+backward_seconds = 9.0
+optimizer_seconds = 1.0
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 30.0
+upload_gpu_slowdown = 1.15
+
+[[jobs]]
+id = "pipeline-parallel-70b-no-fail"
+strategy = "pipeline_parallel"
+failure_rate = 0.0
+data_parallel_replicas = 1
+pipeline_stages = 4
+microbatches = 4
+
+[jobs.model]
+weights_gb = 140.0
+gradient_gb = 140.0
+activation_gb = 4.0
+
+[jobs.timing]
+forward_seconds = 11.0
+backward_seconds = 19.0
+optimizer_seconds = 2.0
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 152.0
+upload_gpu_slowdown = 1.15
+
+[[jobs]]
+id = "hybrid-30b-no-fail"
+strategy = "hybrid"
+failure_rate = 0.0
+data_parallel_replicas = 2
+pipeline_stages = 2
+microbatches = 4
+
+[jobs.model]
+weights_gb = 60.0
+gradient_gb = 60.0
+activation_gb = 3.0
+
+[jobs.timing]
+forward_seconds = 7.0
+backward_seconds = 12.0
+optimizer_seconds = 1.4
+
+[jobs.checkpoint]
+strategy = "object_store"
+every = 2
+size_gb = 68.0
+upload_gpu_slowdown = 1.15

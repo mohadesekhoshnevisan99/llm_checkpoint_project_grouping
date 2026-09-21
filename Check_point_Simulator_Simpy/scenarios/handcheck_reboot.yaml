@@ -1,0 +1,93 @@
+# HAND-CHECK scenario: the `reboot` failure type (reboot_failure_type_spec.md,
+# Sam-approved 2026-07-21). Small enough to trace-read; every duration is
+# predictable with pencil and paper BEFORE running. 1 job x 1 rank, m=1
+# (cohorts == ranks, no cohort compression), NO organic failures — the ONLY
+# event is one SCHEDULED reboot, so the run is fully deterministic.
+#
+# `loc` is LOCAL-placed (arm placement: local, kpeers 0): every persist wave
+# takes the local-SSD fallback path and writes the shard to its OWN node's SSD.
+# A reboot LOSES host DRAM but the local SSD SURVIVES (the host restarts on the
+# SAME node), so the recovery MUST come from `loc`'s own local SSD at the last
+# persist iteration — NOT L3 (there is no store copy), NOT scratch/initial_state.
+#
+# Setup rates: gpu_cpu 10.0, nic 2.0, disk 1.0 GB/s; shard 1.0 GB, iter 10 s.
+# PENCIL MATH (loc, m=1, checkpoint_every 3, iterations 12):
+#   persist waves (own-SSD writes, k=0 local fallback) fire at it = 3, 6, 9.
+#     capture gpu->dram : 1.0 GB / 10.0 GB/s = 0.100 s
+#     local-SSD write   : 1.0 GB /  1.0 GB/s = 1.000 s   (async, overlapped)
+#   ASYNC-WRITE LANDING: the async model overlaps the write with the NEXT block,
+#   so the persist wave for iteration N records its SSD copy ~one iteration late,
+#   near t ~= (N+1)*10 (verified in the trace): @3 lands ~t=41, @6 lands ~t=71,
+#   @9 would land ~t=101. A reboot must therefore fire a FULL iteration AFTER the
+#   target wave lands, or the coincident in-flight write is aborted (generation
+#   bump) and recovery falls back to the previous wave.
+#   SCHEDULED reboot AFTER it = 8 fires ~t=80 (a clean iteration past @6's t~71):
+#     - DRAM copies on loc's node dropped (reboot wipes the DRAM tier only);
+#     - SSD copy @6 SURVIVES the host restart (@9 has not fired: self.it 9 > 8);
+#     - loc down for restart_seconds.reboot = 180.000 s;
+#     - recover from OWN SSD @6:  ssd->dram fetch 1.0 GB / 1.0 GB/s = 1.000 s,
+#                                 dram->GPU restore 1.0 GB / 10.0 GB/s = 0.100 s;
+#     - rollback to it = 6 -> re-execute it 7..12 (loss = 8 - 6 = 2 iterations).
+#   ideal (no ckpt, no failure) completion = 12 iters * 10 s        = 120.000 s
+#   reboot run completion = 120 + 180 (reboot down) + 2 lost iters (20 s)
+#                         + recovery (~1.1 s) + capture (~0.2 s)    ~= 321.4 s
+#     => completion is at LEAST ideal + 180 (the reboot downtime is unmistakable).
+#
+# The pytest tests/test_reboot.py drives this YAML end-to-end (own-SSD recovery
+# + 180 s downtime) AND a strategy-level harness for the hosted-piece survival
+# (a donor piece on the rebooted node is NOT destroyed by the reboot).
+
+simulation:
+  seeds: [7]
+  max_sim_s: 1200.0
+  engine: event
+
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 10.0
+  network_bandwidth_gbps: 2.0
+  local_ssd_bandwidth_gbps: 1.0
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  loc:                          # LOCAL-placed owner: k=0, writes its OWN SSD
+    count: 1
+    ranks: 1
+    cohorts: 1                  # m = 1 -> per-rank exact, no cohort math
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 12
+    checkpoint_every: 3
+    kpeers: 0
+    rpo_s: 120.0
+
+failures:
+  per_node_per_second: 0.0      # NO random failures: the scheduled reboot is the only event
+  weights: {process: 0.4, reboot: 0.15, node: 0.05, spot: 0.4}
+  restart_seconds: {process: 5.0, reboot: 180.0, node: 20.0, spot: 30.0}
+
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 1.0
+  backstop_s: 300.0
+
+controller:
+  slot_period_s: 30.0
+
+# the reboot fires AFTER loc's iteration 8 (a full iteration past @6's SSD write
+# landing, and before the @9 wave fires) -> recovery from the surviving @6 copy.
+scheduled_failures:
+  - id: loc-reboot-after-8
+    job_id: loc0
+    cohort: 0
+    after_iteration: 8
+    failure_type: reboot
+
+arms:
+  ideal:                        # analytic floor: no checkpoints, no failures (scheduled included)
+    ideal: true
+  ours_local:                   # LOCAL placement: own-SSD recovery is the reboot's coverage niche
+    kpeers: false
+    placement: local

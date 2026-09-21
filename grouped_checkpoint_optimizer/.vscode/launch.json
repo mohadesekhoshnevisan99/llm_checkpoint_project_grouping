@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Optimizer: 12 jobs",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/optimizer.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--demo-jobs", "12", "--seconds", "1", "--output", "outputs/demo12.json"]
+    },
+    {
+      "name": "Optimizer: example input",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/optimizer.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--input", "scenario.example.json", "--seconds", "1", "--output", "outputs/example.json"]
+    }
+  ]
+}

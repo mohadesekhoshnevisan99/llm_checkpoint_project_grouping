@@ -1,0 +1,122 @@
+# mini-C TIGHT: the coupling-matters sensitivity scenario (cost_model_v2_design.md
+# §"coupling-matters"). Same physics as miniC.yaml but two shared resources are
+# made SCARCE so the v2 coupled solve must trade jobs off against each other,
+# where v1's slack-budget GP degenerates to per-job optima:
+#   (a) DONOR-SCARCE: mega is ~60% of cluster ranks (256 of 424) -> only ~168
+#       donor ranks remain, so mega's per-wave k budget binds HARD (k caps at 1,
+#       vs 3 in base miniC) and every job competes for donor duty.
+#   (b) STORE-BOUND: store ingest = 5 GB/s aggregate, so Sigma_j s_j f3_j <= B3
+#       BINDS and per-job store frequency f3 must be ALLOCATED, not floor-defaulted.
+# The mid-run frontier ARRIVAL (design point (c)) is DEFERRED: it needs the
+# event-driven engine's re-solve hook, which is under rewrite on another branch.
+# ITERATION ONLY -- never paper numbers (same disclaimer as miniC.yaml).
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  max_sim_s: 14400.0
+  engine: polling
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  # mega unchanged from miniC (256 ranks) -- it is the OTHER classes that shrink,
+  # lifting mega to ~60% of the 424 total ranks and starving the donor pool.
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 1
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 2
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 6
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 5.0          # (b) STORE-BOUND: aggregate store ingest, B3 in the solve
+  out_gbps: 5.0
+  disk_gbps: 5.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+arms:
+  ours_full:
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+  peer_react:
+    kpeers: true
+    random_phases: true
+  local_only:
+    kpeers: false
+  gemini:
+    baseline: gemini
+  checkfreq:
+    baseline: checkfreq
+  megascale:
+    baseline: megascale

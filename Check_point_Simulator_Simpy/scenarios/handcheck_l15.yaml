@@ -1,0 +1,112 @@
+# HAND-CHECK scenario: the L1.5 peer-DRAM tier (l15_peer_dram_spec.md, gate 2c).
+# Small enough to trace-read; every DURATION is pencil-derivable BEFORE running.
+# 2 jobs x 1 rank each, m=1 (no cohort math), NO organic failures — the only
+# events are one SCHEDULED host reboot and one SCHEDULED owner node loss.
+#
+# `own` is PEERDRAM-placed (arm placement: peerdram, kpeers 1): every persist
+# wave stripes ONE 1.0 GB piece to `host`'s daemon-owned DRAM, then the piece
+# demotes host-DRAM -> host-SSD in the background and becomes an ordinary L2
+# piece. `host` never flushes (checkpoint_every 100 > iterations 40).
+#
+# Setup rates: gpu_cpu 10.0, nic 2.0 (duplex), disk 1.0 GB/s; shard 1.0 GB,
+# iter 10 s. PENCIL MATH (exact durations, asserted to the digit in
+# tests/test_l15.py):
+#   capture gpu->dram   : 1.0 GB / 10.0 GB/s = 0.100 s
+#   L1.5 stripe (k=1)   : 1.0 GB / min(NIC_out 2.0, 1 x NIC_in 2.0) = 0.500 s
+#                         (donor DISK is NOT on the write path — the speed win)
+#   demotion dram->ssd  : 1.0 GB / disk 1.0 GB/s = 1.000 s, starts at wave end
+#   L3 drain (chained)  : 1.0 GB / min(disk 1.0, nic 2.0, stream 999) = 1.000 s,
+#                         starts only AFTER the demotion (reads the donor SSD)
+# ASYNC-WAVE LANDING (same mechanism as handcheck_reboot): the persist for
+# iteration N captures at the next GPU gap, so the wave lands one iteration
+# late. Verified trace timeline (own drifts +0.1 s per capture):
+#   wave @3: 40.1 -> 40.6; demote 40.6 -> 41.6; drain 41.6 -> 42.6
+#   wave @6: 70.2 -> 70.7; demote 70.7 -> 71.7  (when reached)
+#
+# CASE A — host reboot AFTER demotion -> recovery at DEMOTED-piece age:
+#   - host reboot after host it=5 fires at t=50.0 (host has no captures, exact
+#     boundaries): the @3 piece DEMOTED at t=41.6, so it sits on host SSD and
+#     SURVIVES the restart (the existing hosted-SSD reboot exemption, EXACTLY
+#     as before); nothing is in DRAM at t=50 -> dram_piece_losses = 0.
+#     host down 50.0 -> 62.0 (reboot_restart 12 s — a knob, short for pencil
+#     clarity; the canonical 180 s is a mini-C property, not a mechanism).
+#   - own NODE loss after own it=5 fires at t=50.1 (0.1 capture drift): own
+#     DRAM+SSD wiped, down 20 s -> recovery at t=70.1 with host alive again.
+#     Newest surviving copy = the DEMOTED @3 piece (an ordinary L2 piece now)
+#     -> recovery tier `crossjob_peer` (NOT the dram label: the piece left
+#     DRAM at demotion) at iteration 3; loss = 5 - 3 = 2 iterations.
+#   - completion: 12 iters re-executed from 3 => pinned end-to-end in pytest.
+
+simulation:
+  seeds: [7]
+  max_sim_s: 2000.0
+  engine: event
+
+cluster:
+  node_count: 10
+  gpu_cpu_bandwidth_gbps: 10.0
+  network_bandwidth_gbps: 2.0
+  local_ssd_bandwidth_gbps: 1.0
+  object_store_bandwidth_gbps: 8.0
+
+model:
+  dram_host_slots: 1          # 1 resident piece per donor rank (spec default)
+  dram_host_gb: 2.0           # 2 x the largest class piece (1.0 GB at k=1)
+
+classes:
+  own:                        # PEERDRAM-placed owner: k=1 stripe to host DRAM
+    count: 1
+    ranks: 1
+    cohorts: 1                # m = 1 -> per-rank exact, no cohort math
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 12
+    checkpoint_every: 3
+    kpeers: 1
+    rpo_s: 1000.0
+  host:                       # the donor: hosts pieces, never flushes
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 40
+    checkpoint_every: 100     # > iterations -> no waves of its own
+    kpeers: 0
+    rpo_s: 1000.0
+
+failures:
+  per_node_per_second: 0.0    # NO random failures: only the scheduled events
+  weights: {process: 0.4, reboot: 0.15, node: 0.05, spot: 0.4}
+  restart_seconds: {process: 5.0, reboot: 12.0, node: 20.0, spot: 30.0}
+
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 999.0
+  backstop_s: 300.0
+
+controller:
+  slot_period_s: 30.0
+
+backstop: donor_drain         # drains chain AFTER demotion (asserted)
+
+scheduled_failures:
+  - id: host-reboot-after-5   # t=50.0: AFTER @3's demotion (41.6) -> piece
+    job_id: host0             # survives on host SSD (reboot exemption)
+    cohort: 0
+    after_iteration: 5
+    failure_type: reboot
+  - id: own-node-after-5      # t=50.1: own node loss -> recovery from the
+    job_id: own0              # DEMOTED @3 piece (ordinary L2) at it=3
+    cohort: 0
+    after_iteration: 5
+    failure_type: node
+
+arms:
+  ideal:                      # analytic floor: no checkpoints, no failures
+    ideal: true
+  ours_full:                  # the L1.5 arm (name keeps check.sh's runner)
+    kpeers: true
+    placement: peerdram

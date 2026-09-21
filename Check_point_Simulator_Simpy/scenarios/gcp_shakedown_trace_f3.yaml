@@ -1,0 +1,13 @@
+# POST-DICTION artifact (NOT a sealed prediction — hardware ran first, 2026-08-10).
+# GCP A100 shakedown mirror, cell F3 (node_loss): ONE injected node loss at
+# t = 120 s into the 360 s rehearsal window, target = job A's rank-0 node
+# (DRAM + SSD wiped; harness restored from the PEER tier on potluck-ctrl).
+# Source of truth: checkpointing/realgpu_coefficient/results/block2_shakedown_gcp/
+#   block2/F3/{summary.json,supervisor.jsonl}.
+provenance:
+  label: POST-DICTION
+  hardware_run_utc: "2026-08-10"
+  source: block2_shakedown_gcp/block2/F3
+  window_s: 360.0
+events:
+  - {t_s: 120.0, type: node_loss, target: node30}

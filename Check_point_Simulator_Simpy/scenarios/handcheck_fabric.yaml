@@ -1,0 +1,123 @@
+# HAND-CHECK: fabric-scoped checkpoint <-> all-reduce coupling.
+# sim_validation_protocol.md CL-012 (pre-registration) / CL-014 (this change).
+#
+# The whole point in one sentence: a checkpoint stream on a PHYSICALLY SEPARATE
+# card must contribute EXACTLY ZERO to a job's all-reduce time, while the same
+# stream on the SAME card must still cost the documented 1 + tasks multiplier.
+#
+# Every constant below is round on purpose so the timeline is pencil-derivable.
+#
+# CONSTANTS
+#   ar_base        = 2(R-1)/R * gradient_gb_per_rank / rates.nic
+#                  = 2*(2-1)/2 * 1.0 / 1.0                        = 1.000 s
+#   base iteration = iteration_seconds + ar_base = 1.0 + 1.0       = 2.000 s
+#   capture        = checkpoint_gb_per_rank / gpu_cpu_bandwidth_gbps
+#                  = 1.0 / 1.0                                     = 1.000 s
+#   stripe         = piece_gb / donor rates.nic_in = 1.0 / 0.01     = 100.000 s
+#
+# TIMELINE (seed 7; identical in BOTH arms up to t = 9.000)
+#   0.000 ..  6.000   iterations 1-3 at 2.000 s each. The wave fires at it=3.
+#   6.000 ..  8.000   iteration 4. The training loop re-requests both GPUs in the
+#                     same instant the wave is spawned, so the capture queues
+#                     behind it; NO transfer is in flight yet -> 2.000 s.
+#   8.000 ..  9.000   capture: the exclusive worker.gpu lock, training blocked.
+#   9.000 ..109.000   the stripe -- still in flight when the trainer finishes, so
+#                     iterations 5 and 6 BOTH fully overlap a transfer (no
+#                     partially-overlapped iteration to account for).
+#   9.000 ..  end     iterations 5 and 6:
+#       blind  : 1.0 compute + ar_base x (1 + tasks) = 1.0 + 2.0 = 3.000 s each
+#                -> trainer ends at 9.000 + 6.000 = 15.000 s
+#       scoped : 1.0 compute + ar_base x 1.0        = 1.0 + 1.0 = 2.000 s each
+#                -> trainer ends at 9.000 + 4.000 = 13.000 s
+#
+# THE HAND-CHECK
+#   15.000 - 13.000 = 2.000 s = 2 iterations x ar_base x ((1 + tasks) - 1).
+#   A transfer on a SEPARATE fabric costs the collective EXACTLY ZERO, and the
+#   magnitude on a shared fabric is untouched. Flip trainer.rates.ckpt_fabric to
+#   `roce` -- the collective's own wire -- under the SAME `scoped` arm and the
+#   trainer ends at 15.000 again, to the digit. Both directions are pinned in
+#   tests/test_fabric_coupling.py.
+
+simulation:
+  seeds: [7]
+  max_sim_s: 3600.0
+
+cluster:
+  node_count: 16
+  gpu_cpu_bandwidth_gbps: 1.0     # 1.0 GB shard -> capture is EXACTLY 1.000 s
+  network_bandwidth_gbps: 1.0
+  local_ssd_bandwidth_gbps: 8.0
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  trainer:
+    count: 1
+    ranks: 2
+    cohorts: 2                    # m = 1, per-rank exact
+    iteration_seconds: 1.0        # pure compute
+    gradient_gb_per_rank: 1.0
+    checkpoint_gb_per_rank: 1.0
+    weights_gb_per_rank: 1.0
+    iterations: 6
+    checkpoint_every: 3           # exactly ONE wave (it=6 is the last iteration,
+                                  # and the loop skips a wave on the last one)
+    kpeers: 1
+    rpo_s: 600.0
+    rates:
+      nic: 1.0                    # ar_base = 2(R-1)/R * g/nic = 1 * 1.0/1.0
+                                  #         = 1.000 s of collective per iteration
+      nic_fabric: roce            # the collective's wire
+      ckpt_fabric: eth1g          # the checkpoint stream's wire: a DIFFERENT
+                                  # physical card. Under `scoped` this is the
+                                  # whole content of the test.
+      nic_in: 10.0                # sender side never binds
+      nic_out: 10.0
+      disk: 8.0
+      disk_w: 8.0
+  donor:
+    count: 4                      # 4 single-rank donor jobs: one per stream, so
+                                  # donor selection cannot change the arithmetic
+    ranks: 1                      # => ar_base == 0: donors have no collective to
+                                  #    stretch, so gamma is out of this test
+    cohorts: 1
+    iteration_seconds: 1.0
+    gradient_gb_per_rank: 1.0
+    checkpoint_gb_per_rank: 1.0
+    weights_gb_per_rank: 1.0
+    iterations: 120               # outlast the trainer by a wide margin
+    checkpoint_every: 1000000     # never checkpoints
+    kpeers: 0
+    rpo_s: 600.0
+    rates:
+      nic: 0.01
+      nic_fabric: roce
+      nic_in: 0.01                # 1.0 GB piece at 0.01 GB/s = 100 s, i.e. the
+      nic_out: 0.01               # stripe is STILL IN FLIGHT when the trainer
+      disk: 8.0                   # finishes -> every post-wave iteration of the
+      disk_w: 8.0                 # trainer overlaps a transfer, no partial ones
+
+failures:
+  per_node_per_second: 0.0        # fully deterministic
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+store:
+  in_gbps: 999.0
+  out_gbps: 999.0
+  disk_gbps: 999.0
+  stream_gbps: 999.0
+
+controller:
+  slot_period_s: 60.0             # inert: every arm sets slots: false
+
+backstop: owner_push              # no donor drains: the only network transfer in
+                                  # the whole run is the trainer's one stripe
+
+arms:
+  # TODAY'S MODEL: fabric-blind. The stripe rides eth1g, the collective rides
+  # roce, and the simulator couples them anyway. This arm reproduces the
+  # CL-007 disagreement in miniature.
+  blind:  {kpeers: true, slots: false}
+  # THE CHANGE: same scenario, coupling scoped to the fabric. ckpt_fabric
+  # (eth1g) != nic_fabric (roce) => the multiplier is exactly 1.0.
+  scoped: {kpeers: true, slots: false, fabric_aware_coupling: true}

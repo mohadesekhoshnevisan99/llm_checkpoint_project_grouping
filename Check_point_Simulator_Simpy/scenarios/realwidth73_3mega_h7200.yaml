@@ -1,0 +1,133 @@
+# 2-HOUR-HORIZON variant (auto-derived: iterations x3 vs v2 base)
+# VARIANT of realwidth73.yaml: THREE mega jobs (3 x 131,072 = 393,216 GPUs;
+# cluster 459,520). Megas can donate to EACH OTHER -> k=2 feasible again
+# (supply ~657k slots vs 262k demand per mega); the binding constraint shifts
+# from donor BUDGET to donor TIMING (mega-wave collisions -> own_flush refusals).
+# ============================================================================
+# REAL-WIDTH 2026 workload — 74 jobs, 197,376 GPUs total
+# ============================================================================
+# This file IS the experiment: every job class at its real 2026 width, with the
+# per-rank quantities kept at the values measured on our hardware anchors.
+# Edit here, review, then:  python3 run_scenario.py --scenario scenarios/realwidth73.yaml
+#
+# What is MEASURED (from the 4x T4 + 32-node CPU fleet anchors):
+#   per-node rates (nic/disk GB/s), gpu->dram capture 12.5 GB/s, per-rank shard
+#   sizes, restart times, k=2 donor striping behavior.
+# What is PARAMETERIZED (cannot be measured on a 32-node testbed; stated openly):
+#   job widths (2026 cost-model classes), per-node failure rate, store
+#   provisioning at cluster scale. Sensitivity knobs are all in this file.
+
+simulation:
+  seeds: [7, 11, 13, 17, 23]
+
+cluster:
+  node_count: 250000               # validation headroom; jobs claim 197,376
+  gpu_cpu_bandwidth_gbps: 12.5     # measured T4 capture rate
+  network_bandwidth_gbps: 1.85     # default per-node NIC (GPU-class measured)
+  local_ssd_bandwidth_gbps: 0.29   # default per-node disk write (GPU-class measured)
+  object_store_bandwidth_gbps: 8.0 # legacy field: initial-state warm pull only
+
+# Job classes at REAL widths. ranks = GPUs per job (1 GPU/node).
+#   cohorts: simulation granularity — a job of R ranks is C cohort workers of
+#   m = R/C ranks each; per-rank physics invariant, aggregate demand correct.
+#   checkpoint_gb_per_rank: the per-NODE shard (measured quantity, ZeRO-sharded
+#   optimizer + weight partition) — job total = ranks x this.
+classes:
+  fxl:        # frontier-XL: 3 jobs x 8,192 GPUs, 32.8 TB per checkpoint wave
+    rpo_s: 60.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 3
+    ranks: 8192
+    cohorts: 128                   # m = 64 ranks/cohort
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 30.0
+    iterations: 240  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2            # 60 s cadence
+    kpeers: 2
+    rates: {nic: 1.85, disk: 0.29}   # GPU-class, measured
+  frontier:   # 12 jobs x 2,048 GPUs
+    rpo_s: 90.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 12
+    ranks: 2048
+    cohorts: 64                    # m = 32
+    checkpoint_gb_per_rank: 2.0
+    iteration_seconds: 20.0
+    iterations: 360  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2            # 40 s cadence
+    kpeers: 2
+    rates: {nic: 1.85, disk: 0.29}
+  standard_g: # 15 jobs x 512 GPUs on GPU-class nodes
+    rpo_s: 120.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 15
+    ranks: 512
+    cohorts: 32                    # m = 16
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 15.0
+    iterations: 480  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2            # 30 s cadence
+    kpeers: 2
+    rates: {nic: 1.85, disk: 0.29}
+  standard_c: # 15 jobs x 512 GPUs on CPU-class (slower) nodes — mixed fleet
+    rpo_s: 120.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 15
+    ranks: 512
+    cohorts: 32
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 15.0
+    iterations: 480  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2
+    kpeers: 2
+    rates: {nic: 1.25, disk: 0.107}  # CPU-class, measured
+  be:         # best-effort/preemptible: 28 jobs x 64 GPUs
+    rpo_s: 120.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 28
+    ranks: 64
+    cohorts: 8                     # m = 8
+    checkpoint_gb_per_rank: 0.4
+    iteration_seconds: 10.0
+    iterations: 720  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2            # 20 s cadence
+    kpeers: 2
+    rates: {nic: 1.25, disk: 0.107}
+  mega:       # THE 2026 mega job: 1 x 131,072 GPUs, 65.5 TB per checkpoint wave
+    rpo_s: 60.0                  # max acceptable expected loss (s); interval <= 2*RPO (#8.3)
+    count: 3
+    ranks: 131072
+    cohorts: 128                   # m = 1,024
+    checkpoint_gb_per_rank: 0.5    # heavily ZeRO-sharded across 131k ranks
+    iteration_seconds: 60.0
+    iterations: 120  # ~7200 s horizon (2 h standard)
+    checkpoint_every: 2            # 120 s cadence
+    kpeers: 2
+    rates: {nic: 1.85, disk: 0.29}
+
+failures:
+  # PARAMETERIZED: LLaMA-3-405B measured 419 interruptions / 54 days / 16k GPUs
+  # = 5.6e-9 per GPU-second. We accelerate ~18x so a ~15-min horizon carries
+  # meaningful failure statistics (~20-25 events cluster-wide per run).
+  per_node_per_second: 1.0e-7
+  weights: {process: 0.4, node: 0.2, spot: 0.4}   # same mix as final73
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}   # measured on M4b
+
+preemption:
+  class_prefix: be                 # whole-job spot eviction, best-effort tier only
+  every_s: 120.0
+  seed: 3
+
+store:
+  # PARAMETERIZED: a testbed-proportional store (0.48 GB/s per 32 nodes) would
+  # scale to ~3 TB/s for 197k nodes; real shared stores are provisioned well
+  # below aggregate burst demand (here ~4 TB/s at these cadences). 500 GB/s
+  # = ~13% of demand. per-stream: modern multipart client, not testbed HTTP PUT.
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 1.0
+
+controller:
+  slot_period_s: 60.0
+
+arms:
+  ours_full:   {kpeers: true, slots: true, controller_epoch_s: 120.0}
+  peer_react:  {kpeers: true, random_phases: true}
+  local_only:  {kpeers: false}
+  store:       {kpeers: true, store_mode: true}

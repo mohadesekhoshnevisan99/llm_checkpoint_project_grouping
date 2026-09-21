@@ -1,0 +1,74 @@
+# HAND-CHECK scenario: small enough that every event's timing is predictable
+# with pencil and paper BEFORE running. 3 jobs x 4 nodes, cohorts=ranks (m=1,
+# no cohort compression), no organic failures, ONE deterministic preemption.
+#
+# Hand predictions (Setup A rates):
+#   capture:        1.0 GB / 12.5 GB/s                  = 0.080 s per rank
+#   peer flush k=2: 1.0 GB / min(1.85, 2 x 0.29 = 0.58) = 1.724 s (uncontended)
+#   flush cadence:  every 3 iters x 10 s = 30 s, at each job's slot offset
+#   preemption:     be job evicted at t=120 s (only eligible victim),
+#                   spot restart 30 s + refetch from surviving donors
+
+simulation:
+  seeds: [7]
+
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  alpha:      # 4 nodes, checkpoints every 30 s at slot 0
+    count: 1
+    ranks: 4
+    cohorts: 4            # m = 1 -> per-rank exact, no cohort math involved
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24        # 240 s
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+  bravo:      # 4 nodes, same cadence, slot offset ~10 s
+    count: 1
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+  be:         # 4 nodes, donor pool + the preemption victim
+    count: 1
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+
+failures:
+  per_node_per_second: 0.0        # NO random failures: fully predictable run
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+preemption:
+  class_prefix: be
+  every_s: 120.0                  # exactly one victim class -> deterministic
+  seed: 3
+
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 1.0
+
+controller:
+  slot_period_s: 30.0
+
+arms:
+  ours_full:   {kpeers: true, slots: true, controller_epoch_s: 0}

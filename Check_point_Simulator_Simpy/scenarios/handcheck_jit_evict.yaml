@@ -1,0 +1,29 @@
+# handcheck_jit_evict.yaml — Just-In-Time checkpointing (EuroSys'24) eviction
+# signature. Deterministic whole-job eviction of `small` every 60 s: JIT has
+# no checkpoints anywhere, so eviction (no surviving DP replica) is TOTAL loss:
+# every evicted cohort restores from initial_state and the job rolls back to 0.
+# With the eviction period (60 s) shorter than small's clean runtime (~175 s)
+# the job can never finish — censored at the cap, the honest outcome for a
+# checkpoint-free policy under preemption. Organic single failures stay on
+# (they drain from survivors, exactly 1 iteration lost, as in handcheck_jit).
+simulation:
+  seeds: [7]
+  max_sim_s: 300.0
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+classes:
+  small:  {count: 1, ranks: 3, cohorts: 3, checkpoint_gb_per_rank: 1.0, iteration_seconds: 4.0, iterations: 40, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+  steady: {count: 1, ranks: 4, cohorts: 4, checkpoint_gb_per_rank: 1.0, iteration_seconds: 4.0, iterations: 30, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+failures:
+  per_node_per_second: 1.0e-3
+  weights: {process: 0.4, node: 0.4, spot: 0.2}
+  restart_seconds: {process: 5.0, node: 10.0, spot: 15.0}
+preemption: {class_prefix: small, every_s: 60.0, seed: 3}
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 1.0}
+controller: {slot_period_s: 30.0}
+arms:
+  jit: {baseline: jit}

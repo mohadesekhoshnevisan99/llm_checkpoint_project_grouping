@@ -1,0 +1,64 @@
+# ============================================================================
+# SEALED PREDICTION -- Jetstream2 verify run, cell F1 (process_kill; restore from DRAM staging).
+# Built by make_seal.py from cell 1's constants phase (REPEATS=1) and the cell-1
+# baselines, BEFORE the REPEATS=3 ladder ran on any cell. Protocol: EXP2_SPEC.md
+# S6 / CL-018 / CL-019; format = gcp_shakedown_mirror_f1.yaml (post-diction
+# dress rehearsal, 2026-08-10). No simulator code changed.
+# PRIMARY (constants substituted verbatim).
+# 2-node job A (g3.xl, 1x A100-SXM4-40GB each: js2c1-g1/g2) + trickle donor job B
+# on js2c1-ctrl (g3.medium, CPU torch) hosting A's peer stripes and the store.
+# Cadence 60 s wall, shard 2 GiB, window 360 s, ONE injected event at t = 120 s
+# (process_kill in the sim vocabulary).
+# MEASURED (cell 1, constants phase):
+#   0.3810 s  job A DDP iteration wall, rank0 median, measure phase, n=822
+#   2.0125 GB/s VM-to-VM fabric (16.1 Gbit/s iperf3, cell-1 baseline)
+#   0.528 GB/s root-disk seq write (528.0 MB/s dd fdatasync, cell-1 baseline)
+#   9.0 s  job B iteration (CPU torch on g3.medium: 40 useful iters / 360 s)
+# UNMEASURED placeholder: gpu_cpu_bandwidth_gbps 5.2 (A100 d2h, Shirin exp1) -- non-binding.
+# UNIT NOTE: *_gbps cluster fields are consumed as GB/s by the engine (see f1 postdiction).
+simulation: {seeds: [0], max_sim_s: 400.0, engine: event}
+cluster:
+  node_count: 3
+  gpu_cpu_bandwidth_gbps: 5.2
+  network_bandwidth_gbps: 2.0125
+  local_ssd_bandwidth_gbps: 0.528
+  object_store_bandwidth_gbps: 8.0
+classes:
+  A:
+    count: 1
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 1.073741824
+    iteration_seconds: 0.3810
+    gradient_gb_per_rank: 0.0
+    iterations: 100000
+    checkpoint_every: 157
+    kpeers: 1
+    rpo_s: 60.0
+  B:
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.073741824
+    iteration_seconds: 9.0
+    gradient_gb_per_rank: 0.0
+    iterations: 100000
+    checkpoint_every: 100000
+    kpeers: 0
+    rpo_s: 60.0
+failures:
+  per_node_per_second: 0.0
+  weights: {process: 1.0, node: 0.0, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+  trace_file: scenarios/js2_verify_trace_f1.yaml
+  trace_window_s: 360.0
+  trace_node_map: {node30: A0, node31: A0}
+  # Frozen measured constants -- constants_cell1/block2/F1/exp2_constants_measured.yaml
+  trace_constants:
+    detect_s: 1.994
+    reprovision_delay_s: 8.828
+    restore_s: 7.218
+    restore_by_class: {process_kill: 7.218}
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 2.0125}
+controller: {slot_period_s: 60.0}
+arms: {ours: {kpeers: true}}

@@ -1,0 +1,44 @@
+# handcheck_preempt_hazard.yaml — eviction-model signature (preemption.model).
+#
+# TWO victim jobs (prefix `be` matches BOTH classes) with very different
+# horizons: be_short finishes early (~3,600 s of the 12,000 s cap), be_long never
+# finishes — so both the before- and after-completion windows are long enough to
+# estimate be_long's eviction rate to within ~10% when pooled over seeds.
+# `steady` is a non-victim donor so evicted jobs can actually recover (peer
+# copies live on OTHER jobs' nodes and survive a whole-job eviction).
+#
+# SIGNATURE to hand-check: count be_long's evictions per unit time BEFORE vs
+# AFTER be_short completes.
+#   * model: per_job_hazard (default) — be_long's hazard is its OWN Exp(mean),
+#     mean = every_s * 2 victims = 240 s (grace 120 s). Its eviction rate is
+#     FLAT across be_short's completion: a survivor never inherits a dead
+#     sibling's reclaim rate.
+#   * model: one_of_class (legacy) — the cluster rate 1/every_s is fixed and
+#     REDISTRIBUTES: be_long shares it with be_short (~1/240 s) until be_short
+#     finishes, then absorbs ALL of it (~1/120 s) — a ~2x jump for doing nothing
+#     but surviving. This is what trapped stragglers and manufactured the
+#     "never finishes" outcome. every_s here is the REAL scenario's 120 s: with
+#     a much shorter period the legacy model saturates (grace + spot restart
+#     approaches the tick interval) and hides its own concentration.
+simulation:
+  seeds: [7]
+  max_sim_s: 12000.0
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+classes:
+  be_short: {count: 1, ranks: 3, cohorts: 3, checkpoint_gb_per_rank: 0.5, iteration_seconds: 4.0, iterations: 800, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+  be_long:  {count: 1, ranks: 3, cohorts: 3, checkpoint_gb_per_rank: 0.5, iteration_seconds: 4.0, iterations: 20000, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+  steady:   {count: 2, ranks: 3, cohorts: 3, checkpoint_gb_per_rank: 0.5, iteration_seconds: 4.0, iterations: 20000, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+failures:
+  per_node_per_second: 0.0        # evictions only: no organic-failure noise
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 10.0, spot: 15.0}
+preemption: {class_prefix: be, every_s: 120.0, model: per_job_hazard, seed: 3}
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 1.0}
+controller: {slot_period_s: 30.0}
+arms:
+  peer_react: {kpeers: true}

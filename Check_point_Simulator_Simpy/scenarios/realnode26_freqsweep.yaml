@@ -1,0 +1,133 @@
+# ============================================================================
+# FREQUENCY SWEEP (Sam, 2026-07-14): what does checkpoint frequency COST, and
+# where does the controller's solved policy land vs naive fixed cadences?
+# ============================================================================
+# Same cluster/workload as realnode26.yaml (Setup B, 2026 nodes). Arms below
+# all use the peer mechanism with slots; ONLY the frequency changes:
+#   naive2 / naive20 / naive100 / naive400  = fixed "every N iterations" for
+#     every job (naive100 ~ every 25-100 min real time, production-like naive)
+#   ours = controller-solved per-job/per-tier policy:
+#     python3 gp_policy.py --scenario scenarios/realnode26_freqsweep.yaml \
+#         --out scenarios/realnode26_freqsweep_policy.json
+#     python3 run_scenario.py --scenario scenarios/realnode26_freqsweep.yaml \
+#         --policy scenarios/realnode26_freqsweep_policy.json --out ...
+# Metrics to compare: completion time (overhead) AND losses per failure.
+simulation:
+  seeds: [7, 11, 13, 17, 23]
+
+cluster:
+  node_count: 30000                # jobs claim 24,672 nodes (197,376 GPUs)
+  gpu_cpu_bandwidth_gbps: 40.0     # 8-GPU node aggregate snapshot to host DRAM
+  network_bandwidth_gbps: 50.0     # 400 GbE
+  local_ssd_bandwidth_gbps: 6.0    # PCIe5 NVMe sustained write
+  object_store_bandwidth_gbps: 8.0 # legacy field: initial-state warm pull only
+
+# ranks = NODES here (8 GPUs each). checkpoint_gb_per_rank = per-NODE shard.
+classes:
+  fxl:        # 3 x 8,192 GPUs = 3 x 1,024 nodes; 32 GB/node -> 32.8 TB/wave
+    count: 3
+    ranks: 1024
+    cohorts: 64                    # m = 16 nodes/cohort
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 240                # ~7,200 s horizon
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+  frontier:   # 12 x 2,048 GPUs = 12 x 256 nodes
+    count: 12
+    ranks: 256
+    cohorts: 32                    # m = 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 360
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 90.0
+  standard_g: # 15 x 512 GPUs = 15 x 64 nodes, current-gen
+    count: 15
+    ranks: 64
+    cohorts: 16                    # m = 4
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 480
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+  standard_c: # 15 x 512 GPUs on older-gen nodes (mixed fleet, half rates)
+    count: 15
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 480
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates: {nic: 25.0, disk: 3.0}
+  be:         # 28 x 64 GPUs = 28 x 8 nodes, preemptible, older-gen
+    count: 28
+    ranks: 8
+    cohorts: 8                     # m = 1 (exact per-node)
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 720
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 120.0
+    rates: {nic: 25.0, disk: 3.0}
+  mega:       # 1 x 131,072 GPUs = 16,384 nodes; 4 GB/node -> 65.5 TB/wave
+    count: 1
+    ranks: 16384
+    cohorts: 128                   # m = 128
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 120
+    checkpoint_every: 2
+    kpeers: 2
+    rpo_s: 60.0
+
+failures:
+  # per-GPU rate as Setup A (LLaMA-3-derived, ~18x accelerated) x 8 GPUs/node
+  per_node_per_second: 8.0e-7
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+preemption:
+  class_prefix: be
+  every_s: 120.0
+  seed: 3
+
+store:
+  # same shared-store provisioning as Setup A (a cluster service does not get
+  # faster because compute nodes did) — per-node volumes are 8x, so pressure
+  # on the store GROWS in this setup; stream cap: 2026 multipart client
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 2.0
+
+controller:
+  slot_period_s: 60.0
+
+arms:
+  naive2:    {kpeers: true, slots: true, checkpoint_every: 2}
+  naive20:   {kpeers: true, slots: true, checkpoint_every: 20}
+  naive100:  {kpeers: true, slots: true, checkpoint_every: 100}
+  naive400:  {kpeers: true, slots: true, checkpoint_every: 400}
+
+# ---- ALL cost-model inputs are adjustable here (optional; defaults shown) ----
+# model:
+#   price_preemption_hazard: true    # false: solver ignores evictions when
+#                                    #        choosing frequencies
+#   weights: {mega: 5.0, fxl: 5.0, frontier: 3.0,
+#             standard_g: 2.0, standard_c: 2.0, be: 1.0}   # job priorities
+#   wave_util: 0.9                   # donor-capacity utilization target for k
+#   hosted_cap: 2                    # shards a node hosts concurrently
+#   fg_fraction: [1.0, 0.15, 0.05]   # visible fraction of L1/L2/L3 writes
+#   overlap_alpha: [0.0, 0.10, 0.15] # async interference coefficients
+#   delay_scale: [0.0, 1.0, 1.0]     # commit-lag scale per tier
+#
+# Failure rate itself: failures.per_node_per_second above. Current value
+# 8.0e-7 is the Llama-3-derived rate ACCELERATED ~18x (statistics in a 2 h
+# window). TRUE rate: 4.5e-8 -> solved intervals stretch ~4x (sqrt law).

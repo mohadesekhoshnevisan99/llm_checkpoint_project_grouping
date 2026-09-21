@@ -1,0 +1,84 @@
+simulation:
+  seeds:
+  - 0
+  - 1
+  - 2
+  max_sim_s: 3600.0
+  engine: event
+  emit_iterations: true
+cluster:
+  node_count: 3
+  gpu_cpu_bandwidth_gbps: 5.2
+  network_bandwidth_gbps: 4.03
+  local_ssd_bandwidth_gbps: 8.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  A:
+    count: 1
+    ranks: 2
+    cohorts: 2
+    iteration_seconds: 0.398
+    gradient_gb_per_rank: 0.248
+    weights_gb_per_rank: 2.0
+    checkpoint_gb_per_rank: 1.0
+    iterations: 600
+    checkpoint_every: 131
+    kpeers: 1
+    rpo_s: 60.0
+    rates:
+      nic: 4.03
+      nic_fabric: roce
+      nic_in: 1.57
+      nic_out: 1.57
+      disk: 8.0
+      disk_w: 8.0
+  B:
+    count: 1
+    ranks: 1
+    cohorts: 1
+    iteration_seconds: 0.398
+    gradient_gb_per_rank: 0.248
+    weights_gb_per_rank: 2.0
+    checkpoint_gb_per_rank: 1.0
+    iterations: 600
+    checkpoint_every: 1000000
+    kpeers: 0
+    rpo_s: 60.0
+    rates:
+      nic: 1.57
+      nic_fabric: roce
+      nic_in: 1.57
+      nic_out: 1.57
+      disk: 8.0
+      disk_w: 8.0
+failures:
+  per_node_per_second: 0.0
+  inject_random: false
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+store:
+  in_gbps: 999.0
+  out_gbps: 999.0
+  disk_gbps: 999.0
+  stream_gbps: 999.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: owner_push
+arms:
+  'off':
+    kpeers: true
+    slots: false
+_mirror_arm:
+  arm: 'off'
+  stream_gbps: null
+  nominal_gbps: null
+  fabric: none
+  tcp_ceiling_applied: false
+  note: baseline iteration time for both jobs

@@ -1,0 +1,182 @@
+# exp1_mirror — the SIMULATOR side of the hardware interference experiment.
+#
+# Mirrors checkpointing/realgpu_coefficient/exp1_scenario.yaml (Shirin's 3-node A2
+# cluster) so the two runs can be joined line by line on (arm, seed, job, iteration).
+# The metric of record is METRICS.md §7: alpha (sender-side) and gamma (donor-side).
+#
+# THIS FILE IS THE TEMPLATE / `off` ARM. Per-arm scenarios + policies are generated
+# by scenarios/exp1_arms.py, which only rewrites the per-arm stream rate (the
+# `rates.nic_in` / `rates.nic_out` caps) and the policy cadence. Nothing else varies.
+#
+# ============================================================================
+# HONESTY LEDGER — every number below is either MEASURED on the hardware or is
+# an explicitly-flagged UNMEASURED placeholder. Nothing here was chosen to make
+# the simulator agree with the hardware; no constant is fitted.
+# ============================================================================
+#
+# MEASURED (legitimate model inputs)
+#   0.398  s   job A/B single-GPU 124M GPT-2 iteration, node30, 25 iters, median
+#   4.03   GB/s NCCL all-reduce busbw, 2-node, 256 MB, RoCE  -> the training fabric
+#   1.57   GB/s NCCL all-reduce busbw, same NIC, sockets (RDMA off) -> TCP ceiling
+#   0.12   GB/s NCCL all-reduce busbw, 1 GbE
+#   5.2    GB/s GPU->host-DRAM capture (2.15 GB in 413 ms)  -> gpu_cpu_bandwidth_gbps
+#   0.091  GB/s 1 GbE checkpoint stream, effective (91 MB/s) -> the eth1g arm
+#
+# DERIVED FROM PHYSICS (not fitted)
+#   0.248  GB   gradient bytes per rank = 124e6 params x 2 B (bf16).
+#               The runtime's ring formula gives ar_base = 2(R-1)/R * 0.248 / 4.03
+#               = 0.0615 s for A (R=2), so A's BASE iteration is
+#                   0.398 + 0.0615 = 0.4595 s.
+#               *** The hardware measured 0.485 s for the same 2-node DDP step. ***
+#               The 25.5 ms (5.3%) shortfall is all-reduce launch + small-message
+#               inefficiency that the ring formula does not model. It is REPORTED,
+#               not absorbed: setting iteration_seconds to 0.485 outright would
+#               double-count the all-reduce and would also delete the only term
+#               the simulator can stretch (see the alpha mechanism note below).
+#
+# UNMEASURED PLACEHOLDERS (flagged; change when the probe fills them in)
+#   rates.disk / disk_w = 8.0 GB/s. exp1_scenario.yaml's phase-0 probe left
+#     `dram_to_nvme_gbps: null`, so donor NVMe write bandwidth is NOT measured.
+#     It is deliberately set NON-BINDING (above the fastest arm, 6.25 GB/s) so the
+#     simulator's stripe prediction is a PURE NIC model with no invented disk term.
+#     Consequence: if the real NVMe binds below the shaped rate at tc25/tc50, the
+#     simulator will UNDER-predict stripe time there. That is a stated exposure.
+#   store.* = inert in this mirror (no drain; see the `store` block).
+#
+# ALPHA MECHANISM, AS THE SIMULATOR ACTUALLY IMPLEMENTS IT (read before trusting
+# any alpha it prints):
+#   1. capture stall — the GPU->DRAM capture takes worker.gpu, which is the same
+#      resource the training loop takes, so training BLOCKS for
+#      checkpoint_gb_per_rank / gpu_cpu_bandwidth_gbps = 1.0/5.2 = 0.192 s per
+#      cohort per wave. Bandwidth-realistic.
+#   2. all-reduce coupling — while a checkpoint network transfer is in flight on a
+#      job's own workers, that job's all-reduce runs at 1/(1+tasks) speed
+#      (CohortJobRuntime._allreduce_slowdown). This is a COUNT-based multiplier: a
+#      91 MB/s stripe and a 6.25 GB/s stripe both give exactly factor 2. Across
+#      arms the simulator's alpha therefore varies ONLY through how LONG the
+#      stripe is in flight, never through how hard it pushes the wire.
+#      *** FABRIC SCOPE (protocol CL-014, DEFAULT OFF). With
+#      `model.fabric_aware_coupling: true` (exp1_arms.py --fabric-aware) the
+#      multiplier fires only when the stripe rides the SAME fabric as the
+#      collective — rates.ckpt_fabric == rates.nic_fabric. On the eth1g arm the
+#      two are different physical cards (0000:1c vs 0000:5e), so the coupling
+#      term is exactly 1.0 and the arm's whole alpha is the capture stall in (1).
+#      The MAGNITUDE on a shared wire is unchanged (still 1 + tasks, still
+#      duration-driven): making it intensity-based is CL-012.D S3, a separate
+#      change with its own justification. ***
+#   Nothing else couples checkpointing to training. In particular there is no
+#   PCIe model, no NUMA model, and no packet-level TCP model.
+#
+# GAMMA MECHANISM: the donor's workers ARE added to the transfer's watched set, so
+#   the donor job's checkpoint_network_tasks counter does rise while it hosts.
+#   But that counter only ever multiplies the donor's ALL-REDUCE time, and job B
+#   has ranks: 1, so its ar_base = 2(1-1)/1 * g / nic = 0 EXACTLY. There is nothing
+#   to stretch. => this mirror will report gamma = 0.0 in every arm, by
+#   construction, not by measurement. See exp1_arms.py's gap list.
+
+simulation:
+  seeds: [0, 1, 2]              # same seeds as the hardware campaign
+  max_sim_s: 3600.0
+  engine: event
+  emit_iterations: true         # METRICS.md §1 per-iteration records (opt-in hook
+                                # added to run_scenario.py for this validation)
+
+cluster:
+  node_count: 3                 # node30 + node31 (job A) + node32 (job B)
+  gpu_cpu_bandwidth_gbps: 5.2   # MEASURED capture rate (2.15 GB / 413 ms)
+  network_bandwidth_gbps: 4.03  # fallback only; both classes override via `rates`
+  local_ssd_bandwidth_gbps: 8.0 # UNMEASURED placeholder, deliberately non-binding
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  A:                            # the 2-way DDP job: node30 (rank0) + node31 (rank1)
+    count: 1
+    ranks: 2
+    cohorts: 2                  # m = 1: one cohort per physical rank, no compression
+    iteration_seconds: 0.398    # MEASURED pure compute (single-GPU median)
+    gradient_gb_per_rank: 0.248 # 124e6 params x 2 B bf16 -> ar_base = 0.0615 s
+    weights_gb_per_rank: 2.0
+    checkpoint_gb_per_rank: 1.0 # job total 2.0 GB.  NOTE: the harness's SHARD
+                                # constant is 2 GiB = 2.147 GB, so the mirror moves
+                                # 7.4% FEWER bytes than the hardware. Override with
+                                # exp1_arms.py --shard-gb-per-rank 1.0737 to match
+                                # byte-for-byte.
+    iterations: 600             # run.iterations from exp1_scenario.yaml
+    checkpoint_every: 131       # placeholder; the per-arm policy sets the real
+                                # cadence = round(60 s / iteration wall)
+    kpeers: 1                   # k=1 at this scale (exp1_scenario jobs[A].k)
+    rpo_s: 60.0
+    rates:
+      nic: 4.03                 # TRAINING fabric: MEASURED RoCE all-reduce busbw.
+                                # Feeds ar_base ONLY.
+      nic_fabric: roce          # WHICH WIRE that collective rides (CL-014). The
+                                # Mellanox 100 Gb RoCE card, PCIe 0000:5e,
+                                # enp94s0f0np0 (exp1_scenario.yaml:22-35). A LABEL,
+                                # not a rate: inert unless
+                                # model.fabric_aware_coupling is on.
+      nic_in: 1.57              # CHECKPOINT fabric caps, rewritten per arm by
+      nic_out: 1.57             # exp1_arms.py. INERT in the `off` template (A's
+                                # cadence never fires, so no flow is created).
+                                # exp1_arms.py also writes `ckpt_fabric` per arm
+                                # (eth1g -> the separate Intel 1 GbE card 0000:1c;
+                                # roce_tcp/tcN -> `roce`, the SAME card as
+                                # training). The `off` arm gets no ckpt_fabric:
+                                # there is no stream to put on a wire.
+      disk: 8.0                 # UNMEASURED placeholder (non-binding)
+      disk_w: 8.0
+  B:                            # the donor job: node32, trains AND hosts A's stripe
+    count: 1
+    ranks: 1
+    cohorts: 1
+    iteration_seconds: 0.398    # MEASURED single-GPU median
+    gradient_gb_per_rank: 0.248 # irrelevant: ranks=1 => ar_base == 0
+    weights_gb_per_rank: 2.0
+    checkpoint_gb_per_rank: 1.0 # never flushed (policy sets B's cadence past the
+                                # horizon and k=0) — exp1_scenario jobs[B].enabled:false
+    iterations: 600
+    checkpoint_every: 1000000   # never fires
+    kpeers: 0
+    rpo_s: 60.0
+    rates:
+      nic: 1.57                 # donor demand cap for A's stripe; per-arm.
+                                # (ranks=1 => B's ar_base is 0 regardless.)
+      nic_fabric: roce          # node32's collective would ride RoCE too. Inert
+                                # here twice over: ar_base = 0 at 1 rank, and the
+                                # donor's counter is tagged with the OWNER's
+                                # ckpt_fabric anyway (the stripe's own wire).
+      nic_in: 1.57              # per-arm
+      nic_out: 1.57             # per-arm
+      disk: 8.0                 # UNMEASURED placeholder (non-binding)
+      disk_w: 8.0
+
+failures:
+  # exp1 is interference-only: `no_failures: true` in exp1_scenario.yaml.
+  per_node_per_second: 0.0
+  inject_random: false
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+store:
+  # node34 MinIO exists in the cluster, but run_exp1.sh performs NO drain: the
+  # receiver spools to /tmp and deletes. So the mirror does no drain either
+  # (policy flags set backstop: owner_push with store_every unset => zero store
+  # traffic). These numbers are therefore INERT. Regenerate with
+  # exp1_arms.py --drain to exercise donor_drain instead.
+  in_gbps: 999.0
+  out_gbps: 999.0
+  disk_gbps: 999.0
+  stream_gbps: 999.0
+  backstop_s: 300.0
+
+controller:
+  slot_period_s: 60.0           # inert: the policies set slots:false (the hardware
+                                # sender has no phasing gate, it fires on a timer)
+
+backstop: owner_push
+
+arms:
+  # Present so the file is runnable stand-alone; the real runs go through the
+  # per-arm policies exp1_arms.py writes (one scenario + one policy per arm).
+  off:
+    kpeers: true
+    slots: false

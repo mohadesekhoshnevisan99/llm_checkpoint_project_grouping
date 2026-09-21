@@ -1,0 +1,16 @@
+# SEALED PREDICTION artifact -- Jetstream2 verify run, cell F5 (process_kill).
+# Written by make_seal.py from cell 1's constants phase, before the ladder ran.
+# ONE injected event at t = 120 s into the 360 s window, target = job A's rank-0
+# node (harness label node30 = js2c*-g1).
+# F5 CHAIN: second SIGKILL 5.962 s after the first (measured: harness fires it
+# 2 s into the restore phase). In the sim an event during recovery RESETS the
+# clock (reprovision + restore again, no second detect), matching EXP2_SPEC S3.
+provenance:
+  label: SEALED
+  built_utc: "2026-09-06T23:12:57Z"
+  source: js2_verify_2026-09-03/constants_cell1/block2/F5
+  hardware_event_type: process_kill
+  window_s: 360.0
+events:
+  - {t_s: 120.0, type: process_kill, target: node30}
+  - {t_s: 125.962, type: process_kill, target: node30}

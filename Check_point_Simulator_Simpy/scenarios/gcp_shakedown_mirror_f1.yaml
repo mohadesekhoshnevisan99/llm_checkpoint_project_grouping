@@ -1,0 +1,75 @@
+# ============================================================================
+# POST-DICTION — NOT A SEALED PREDICTION. The GCP hardware ran FIRST
+# (2026-08-10 shakedown); this mirror was written AFTER, from its logs.
+# Purpose: (a) sanity-check sim calibration against the first GCP A100
+# measurements, (b) dress-rehearse the exact scenario pipeline validation day
+# will seal. Protocol: EXP2_SPEC.md §6 / CL-018 / CL-019; format copied from
+# the SEALED exp2cl_seal.yaml (CloudLab, 2026-08-05) — no new machinery.
+# ============================================================================
+# CELL F1 — process_kill on job A's rank-0 node at t = 120 s; harness restored
+# from local DRAM in 15.447 s. 2-node job A (a2-highgpu-1g, 1x A100-40GB each:
+# potluck-g1/g2) + trickle job B on potluck-ctrl hosting A's peer stripes.
+# Cadence 60 s wall, shard 2 GiB, window 360 s, seed 0.
+#
+# MEASURED (all from block2_shakedown_gcp, the hardware ground truth):
+#   0.3118 s   job A DDP iteration wall, rank0 median, measure phase, n=1034
+#              (block2/F1/potluck-g1/train_A_rank0.inc*.jsonl)
+#   2.5125 GB/s VM-to-VM fabric (20.1 Gbit/s iperf)
+#   0.161  GB/s pd-balanced (network-attached) disk seq write — PROVISIONAL
+#              condition: validation day uses local-ssd VMs
+#   2.147  GB  shard (shard_bytes 2147483648, ckpt_sender meta)
+#   frozen recovery constants: block2/F1/exp2_constants_measured.yaml
+# UNMEASURED placeholder: gpu_cpu_bandwidth_gbps 5.2 GB/s (A100 d2h capture
+#   measured on Shirin, exp1 2026-08; NOT re-measured on GCP — capture stall
+#   is ~0.2 s per wave, non-binding for the recovery metrics of record).
+# UNIT NOTE: the *_gbps cluster fields are consumed as GB/s by the engine
+#   (checkpointing/baselines.py:69, crossjob.py:1205), matching exp1_mirror's
+#   usage; values here are GB/s.
+simulation: {seeds: [0], max_sim_s: 400.0, engine: event}
+cluster:
+  node_count: 3                        # potluck-g1, potluck-g2, potluck-ctrl
+  gpu_cpu_bandwidth_gbps: 5.2          # UNMEASURED-on-GCP placeholder (above)
+  network_bandwidth_gbps: 2.5125      # MEASURED 20.1 Gbit/s VM-to-VM
+  local_ssd_bandwidth_gbps: 0.161     # MEASURED pd seq write (PROVISIONAL)
+  object_store_bandwidth_gbps: 8.0    # inert: no store drain in F1-F3 restores
+classes:
+  A:                                   # 2-way DDP GPT-2, one A100 per node
+    count: 1
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 1.073741824   # job total 2 GiB = harness shard_bytes
+    iteration_seconds: 0.3118          # MEASURED DDP wall (all-reduce included)
+    gradient_gb_per_rank: 0.0          # wall already includes all-reduce (exp2cl pattern)
+    iterations: 100000                 # never completes inside the window
+    checkpoint_every: 192              # round(60 s / 0.3118 s) — 60 s wall cadence
+    kpeers: 1                          # stripes to B's node (potluck-ctrl)
+    rpo_s: 60.0
+  B:                                   # trickle donor job on potluck-ctrl
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.073741824
+    iteration_seconds: 60.0            # measured: 6 useful iters / 360 s window
+    gradient_gb_per_rank: 0.0
+    iterations: 100000
+    checkpoint_every: 100000           # never checkpoints
+    kpeers: 0
+    rpo_s: 60.0
+failures:
+  per_node_per_second: 0.0             # the trace is the ONLY failure source
+  weights: {process: 1.0, node: 0.0, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+  trace_file: scenarios/gcp_shakedown_trace_f1.yaml
+  trace_window_s: 360.0                # harness window_s (block2/F1/summary.json)
+  trace_node_map: {node30: A0, node31: A0}
+  # Frozen measured constants — block2/F1/exp2_constants_measured.yaml,
+  # rehearsal 2026-08-10T19:56:40Z. POST-DICTION: measured before this file
+  # existed, but NOT committed before the sim run — post-hoc by protocol.
+  trace_constants:
+    detect_s: 2.296
+    reprovision_delay_s: 10.231
+    restore_s: 15.447                  # dram-tier restore, disk-bound (pd)
+    restore_by_class: {process_kill: 15.447}   # CL-019
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 2.5125}
+controller: {slot_period_s: 60.0}
+arms: {ours: {kpeers: true}}

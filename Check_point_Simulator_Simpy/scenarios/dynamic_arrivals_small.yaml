@@ -1,0 +1,71 @@
+# Small, visual example of weighted random job arrivals.
+# One steady job starts at t=0. Three more jobs arrive between t=8 and t=25;
+# burst jobs have 3x the selection weight but remain bounded by their limits.
+simulation:
+  seeds: [7]
+  max_sim_s: 120.0
+  engine: event
+
+cluster:
+  node_count: 12
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 20.0
+  local_ssd_bandwidth_gbps: 4.0
+  object_store_bandwidth_gbps: 8.0
+
+classes:
+  steady:
+    count: 2
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 5.0
+    iterations: 8
+    checkpoint_every: 2
+    kpeers: 1
+    rpo_s: 30.0
+    weights_gb_per_rank: 1.0
+  burst:
+    count: 2
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 4.0
+    iterations: 7
+    checkpoint_every: 2
+    kpeers: 1
+    rpo_s: 30.0
+    weights_gb_per_rank: 1.0
+
+job_arrivals:
+  mode: weighted_random
+  initial:
+    steady: 1
+  random:
+    start_s: 8.0
+    end_s: 25.0
+    total: 3
+    seed: 41
+    pool:
+      steady: {weight: 1, limit: 1}
+      burst: {weight: 3, limit: 2}
+
+failures:
+  per_node_per_second: 0.0
+  weights: {process: 0.4, node: 0.2, spot: 0.4}
+  restart_seconds: {process: 1.0, node: 2.0, spot: 3.0}
+
+store:
+  in_gbps: 20.0
+  out_gbps: 20.0
+  disk_gbps: 20.0
+  stream_gbps: 2.0
+
+controller:
+  slot_period_s: 10.0
+
+arms:
+  simple_checkpoint:
+    kpeers: true
+    replication_degree: 1
+    checkpoint_every: 2

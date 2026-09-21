@@ -1,0 +1,162 @@
+# GENERATED stage-uniform rackpar variant (T23 mirrors T20, 2026-07-28):
+# rackpar_miniC.yaml with a GLOBAL zero_stage=3 override on every
+# class's model: block (same override mechanism as T20's run_ablation.py;
+# dp/tp/pp as configured; checkpoint_gb_per_rank DERIVED at load, never
+# hand-set). Rack knobs stay at BOTH yaml locations (top-level for
+# run_scenario.py, failures: for gp_policy.py) per the rack_* convention.
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    model:
+      name: llama-405B
+      params_b: 405
+      tp: 8
+      pp: 16
+      dp: 16
+      zero_stage: 3
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    model:
+      name: llama-70B
+      params_b: 70
+      tp: 8
+      pp: 4
+      dp: 16
+      zero_stage: 3
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    model:
+      name: yi-30B
+      params_b: 30
+      tp: 4
+      pp: 2
+      dp: 16
+      zero_stage: 3
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    model:
+      name: llama-13B
+      params_b: 13
+      tp: 2
+      pp: 2
+      dp: 16
+      zero_stage: 3
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    model:
+      name: llama-3B
+      params_b: 3
+      tp: 1
+      pp: 1
+      dp: 16
+      zero_stage: 3
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:
+    process: 0.4
+    reboot: 0.15
+    node: 0.05
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0
+    node: 20.0
+    spot: 30.0
+  rack_size: 4
+  rack_weight: 0.02
+  rack_p_destroy: 0.01
+  rack_outage_s:
+  - 3600.0
+  - 21600.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  ideal:
+    ideal: true
+  gemini:
+    baseline: gemini
+  checkfreq:
+    baseline: checkfreq
+  megascale:
+    baseline: megascale
+  jit:
+    baseline: jit
+  handset:
+    kpeers: true
+    slots: true
+    cadence_l1_s: 500.0
+    cadence_l2_s: 1100.0
+    cadence_l3_s: 2900.0
+rack_size: 4
+rack_weight: 0.02
+rack_p_destroy: 0.01
+rack_outage_s:
+- 3600.0
+- 21600.0

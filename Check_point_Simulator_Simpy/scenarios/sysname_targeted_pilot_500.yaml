@@ -1,0 +1,73 @@
+# Controlled 500-node counterexample for SysName's cross-job-only placement.
+# The failed rank is declared before the run; no random failures or preemptions
+# are injected. Every logical node is simulated as its own cohort.
+simulation:
+  seeds: [7]
+  max_sim_s: 2000.0
+  engine: event
+
+cluster:
+  node_count: 500
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 1000.0
+
+classes:
+  dominant:
+    count: 1
+    ranks: 480
+    cohorts: 480
+    checkpoint_gb_per_rank: 1.0
+    gradient_gb_per_rank: 1.0
+    weights_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 60
+    checkpoint_every: 6
+    kpeers: 2
+    rpo_s: 60.0
+  helper:
+    count: 20
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 0.1
+    gradient_gb_per_rank: 0.1
+    weights_gb_per_rank: 0.1
+    iteration_seconds: 10.0
+    iterations: 70
+    checkpoint_every: 6
+    kpeers: 2
+    rpo_s: 60.0
+
+# The nonzero rate informs the policy solver. Runtime injection is disabled so
+# every non-ideal arm receives exactly the scheduled failure below.
+failures:
+  per_node_per_second: 1.0e-6
+  inject_random: false
+  weights: {process: 0.0, node: 1.0, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+
+scheduled_failures:
+  - id: dominant-tail-node-loss
+    job_id: dominant0
+    cohort: 479
+    after_iteration: 36
+    failure_type: node
+
+store:
+  in_gbps: 1000.0
+  out_gbps: 1000.0
+  disk_gbps: 1000.0
+  stream_gbps: 10.0
+
+controller:
+  slot_period_s: 60.0
+
+backstop: donor_drain
+
+arms:
+  jit: {baseline: jit}
+  gemini: {baseline: gemini}
+  megascale: {baseline: megascale}
+  ideal: {ideal: true, kpeers: false}
+

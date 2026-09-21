@@ -1,0 +1,197 @@
+{
+ "meta": {
+  "cadence_s": 60.0,
+  "checkpoint_every": 131,
+  "iteration_wall_s": 0.459538462,
+  "ar_base_s": 0.061538462,
+  "shard_gb_per_rank": 1.0,
+  "tcp_ceiling_applied": true,
+  "tokens_per_iter": 4096,
+  "warmup_iters": 30,
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "iterations": 600,
+  "arms": {
+   "off": {
+    "stream_gbps": null,
+    "nominal_gbps": null,
+    "fabric": "none",
+    "tcp_ceiling_applied": false,
+    "note": "baseline iteration time for both jobs",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_off.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_off_policy.json"
+   },
+   "eth1g": {
+    "stream_gbps": 0.091,
+    "nominal_gbps": 0.091,
+    "fabric": "eth1g",
+    "tcp_ceiling_applied": false,
+    "note": "physically separate 1 GbE card - the paper's premise (MEASURED rate)",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_eth1g.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_eth1g_policy.json"
+   },
+   "roce_tcp": {
+    "stream_gbps": 1.57,
+    "nominal_gbps": 1.57,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "note": "same NIC as training, kernel sockets - the AWS EFA/ENA case",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_roce_tcp.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_roce_tcp_policy.json"
+   },
+   "tc1": {
+    "stream_gbps": 0.125,
+    "nominal_gbps": 0.125,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "note": "tbf 1 gbit/s on the RoCE NIC's kernel egress",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc1.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc1_policy.json"
+   },
+   "tc5": {
+    "stream_gbps": 0.625,
+    "nominal_gbps": 0.625,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "note": "tbf 5 gbit/s",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc5.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc5_policy.json"
+   },
+   "tc10": {
+    "stream_gbps": 1.25,
+    "nominal_gbps": 1.25,
+    "fabric": "roce",
+    "tcp_ceiling_applied": false,
+    "note": "tbf 10 gbit/s",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc10.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc10_policy.json"
+   },
+   "tc25": {
+    "stream_gbps": 1.57,
+    "nominal_gbps": 3.125,
+    "fabric": "roce",
+    "tcp_ceiling_applied": true,
+    "note": "tbf 25 gbit/s",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc25.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc25_policy.json"
+   },
+   "tc50": {
+    "stream_gbps": 1.57,
+    "nominal_gbps": 6.25,
+    "fabric": "roce",
+    "tcp_ceiling_applied": true,
+    "note": "tbf 50 gbit/s",
+    "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc50.yaml",
+    "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc50_policy.json"
+   }
+  }
+ },
+ "rows": [
+  {
+   "arm": "off",
+   "stream_gbps": null,
+   "fabric": "none",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.459538,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.0,
+   "gamma": 0.0,
+   "mean_stripe_s": null
+  },
+  {
+   "arm": "eth1g",
+   "stream_gbps": 0.091,
+   "fabric": "eth1g",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.479026,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.042406,
+   "gamma": 0.0,
+   "mean_stripe_s": 21.978
+  },
+  {
+   "arm": "roce_tcp",
+   "stream_gbps": 1.57,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.461752,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.004816,
+   "gamma": 0.0,
+   "mean_stripe_s": 1.2739
+  },
+  {
+   "arm": "tc1",
+   "stream_gbps": 0.125,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.473843,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.031129,
+   "gamma": 0.0,
+   "mean_stripe_s": 16.0
+  },
+  {
+   "arm": "tc5",
+   "stream_gbps": 0.625,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.463479,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.008575,
+   "gamma": 0.0,
+   "mean_stripe_s": 3.2
+  },
+  {
+   "arm": "tc10",
+   "stream_gbps": 1.25,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "mean_dt_A_s": 0.462184,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.005756,
+   "gamma": 0.0,
+   "mean_stripe_s": 1.6
+  },
+  {
+   "arm": "tc25",
+   "stream_gbps": 1.57,
+   "fabric": "roce",
+   "tcp_ceiling_applied": true,
+   "mean_dt_A_s": 0.461752,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.004816,
+   "gamma": 0.0,
+   "mean_stripe_s": 1.2739
+  },
+  {
+   "arm": "tc50",
+   "stream_gbps": 1.57,
+   "fabric": "roce",
+   "tcp_ceiling_applied": true,
+   "mean_dt_A_s": 0.461752,
+   "mean_dt_B_s": 0.398,
+   "alpha": 0.004816,
+   "gamma": 0.0,
+   "mean_stripe_s": 1.2739
+  }
+ ],
+ "cannot_express": [
+  "GAMMA IS STRUCTURALLY ZERO. The donor's workers do enter the transfer's watched set (crossjob.py: watched = (owner, *donors)), so the donor job's checkpoint_network_tasks counter rises while it hosts. But that counter is consumed ONLY by CohortJobRuntime._allreduce_slowdown, i.e. it can stretch nothing but the donor job's ALL-REDUCE. Job B has ranks: 1, so its ar_base = 2(R-1)/R * g / nic = 0 exactly. There is no term to multiply. The simulator therefore reports gamma = 0.000 in every arm as a matter of code structure, not of physics. Hosting a stripe costs a donor's donor-side NIC and disk capacity in the max-min solver, but the solver's allocations never feed back into ANY job's compute clock.",
+  "ALPHA IS COUNT-BASED, NOT INTENSITY-BASED. While any checkpoint network transfer is in flight on a job's own workers, that job's all-reduce runs at 1/(1+tasks). A 0.091 GB/s stripe and a 6.25 GB/s stripe both give exactly factor 2. Across arms the simulator's alpha varies ONLY through how long the stripe is in flight. It cannot express 'a faster stream hurts more per second', which is the effect the tc ladder was built to measure.",
+  "TRAINING TRAFFIC IS NOT IN THE CAPACITY MODEL. All-reduce is an advance_work() timeout, not a Flow. It never registers against nic_in/nic_out, so a checkpoint stream and the training collective can never actually contend for a shared NIC in the max-min solver. The roce_tcp arm (same wire for both) and the eth1g arm (separate wire) are modelled with the SAME coupling; only their stripe durations differ. This is the single biggest structural gap for this experiment.",
+  "NO PCIe, NO NUMA. METRICS.md \u00a78 names both. nvidia-smi topo reports the A2 on NUMA node 1 with the RoCE NIC at SYS. The simulator has one gpu_cpu_bandwidth number and no interconnect. If the hardware shows alpha > 0 in the eth1g arm, the simulator has no term that could reproduce it.",
+  "NO TCP DYNAMICS. Rates are fluid max-min: no slow start, no cwnd, no congestion collapse, no per-connection setup. The 2 GB stripes here take 0.3-22 s, so slow start is a small but real bias the simulator does not carry. It also cannot show tc's burst/latency parameters (burst 32mbit, latency 50ms) doing anything.",
+  "CAPTURE IS A HARD GPU LOCK. The simulator's GPU->DRAM capture takes worker.gpu, so training blocks for the FULL 1.0/5.2 = 0.192 s. On the hardware the capture runs in a SEPARATE process (ckpt_probe.py) with its own CUDA context; it contends for the GPU but does not serialize with the training step the way an exclusive resource does. Expect the simulator to over-attribute capture stall.",
+  "STRIPE TOPOLOGY DIFFERS. Hardware streams ONE 2 GiB shard from node30 only. The mirror gives each of A's two ranks a 1.0 GB shard, so TWO senders stripe concurrently into B. The donor's nic_in is the binding cap in both cases, so the WAVE DURATION matches, but sender-side egress load per node differs by 2x and both of A's ranks take the capture stall (hardware: only rank 0).",
+  "BYTE COUNT DIFFERS BY 7.4%. The harness SHARD constant is 2 GiB = 2.147 GB; the mirror moves 2.0 GB as instructed. Pass --shard-gb-per-rank 1.0737 to close it.",
+  "NO DONOR fsync. The receiver's write+fsync is inside the stripe's flow as a disk resource, not a separately timed phase, so ckpt_receiver.jsonl carries fsync_dt_s: null and recv_dt_s identical to the sender's dur_s. The hardware sender waits on the fsync ack, so its stripe includes a term the simulator cannot isolate.",
+  "DONOR NVMe WRITE BANDWIDTH IS UNMEASURED (exp1_scenario.yaml phase-0 left dram_to_nvme_gbps null). It is set NON-BINDING (8.0 GB/s) so no invented disk term enters. If the real NVMe binds below the shaped rate at tc25/tc50, the simulator under-predicts stripe time there.",
+  "NO PER-ITERATION VARIANCE. Every simulated iteration of a job has identical compute time, so p99 stretch, jitter and straggler tails are degenerate: the dt_s distribution is a two-point mass (stalled vs not). METRICS.md's p99 stretch row is computable but carries no information here.",
+  "NO LOSS CURVE, NO GPU TELEMETRY, NO CLOCK SKEW. loss is null, gpu.jsonl is not emitted, and run.json's clock_offsets_ms is a note rather than numbers.",
+  "ALL-REDUCE COST IS 5.3% SHORT. The ring formula with measured busbw gives 61.5 ms; hardware measures 87 ms of all-reduce (485 - 398). The residual is launch + small-message inefficiency. Reported, not absorbed: this shifts the simulator's absolute iteration time to 0.4595 s vs 0.485 s measured, though alpha/gamma are ratios and are only second-order sensitive to it."
+ ]
+}

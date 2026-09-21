@@ -1,0 +1,71 @@
+[simulation]
+seed = 7
+iterations = 8
+
+[cluster]
+node_count = 64
+cpu_cores_per_node = 1
+cpu_memory_gb = 3.75
+gpus_per_node = 1
+gpu_memory_gb = 80.0
+gpu_cpu_bandwidth_gbps = 12.5
+network_bandwidth_gbps = 12.5
+communication_launch_seconds = 0.01
+local_ssd_bandwidth_gbps = 2.0
+object_store_bandwidth_gbps = 8.0
+object_store_concurrency = 4
+
+[failures]
+probability_per_second = 0.0
+process_weight = 0.5
+node_weight = 0.3
+spot_weight = 0.2
+process_restart_seconds = 3.0
+node_restart_seconds = 8.0
+spot_restart_seconds = 15.0
+
+[[jobs]]
+id = "jobA"
+strategy = "data_parallel"
+data_parallel_replicas = 2
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 26.0
+gradient_gb = 26.0
+activation_gb = 2.0
+
+[jobs.timing]
+forward_seconds = 5.0
+backward_seconds = 9.0
+optimizer_seconds = 1.0
+
+[jobs.checkpoint]
+strategy = "crossjob_peer"
+every = 2
+size_gb = 30.0
+upload_gpu_slowdown = 1.15
+
+[[jobs]]
+id = "jobB"
+strategy = "data_parallel"
+data_parallel_replicas = 2
+pipeline_stages = 1
+microbatches = 1
+
+[jobs.model]
+weights_gb = 26.0
+gradient_gb = 26.0
+activation_gb = 2.0
+
+[jobs.timing]
+forward_seconds = 6.0
+backward_seconds = 10.0
+optimizer_seconds = 1.0
+
+[jobs.checkpoint]
+strategy = "crossjob_peer"
+every = 2
+size_gb = 30.0
+upload_gpu_slowdown = 1.15

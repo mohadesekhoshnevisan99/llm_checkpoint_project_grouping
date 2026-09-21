@@ -1,0 +1,98 @@
+# HAND-CHECK scenario B: L1.5 volatility — host reboot BEFORE demotion
+# (l15_peer_dram_spec.md, gate 2c, the honest half of the pencil pair).
+# Identical geometry to handcheck_l15.yaml, but the donor DISK is 20x slower
+# (0.05 GB/s), so a demotion takes 1.0 / 0.05 = 20.000 s — a wide window for a
+# host reboot to land INSIDE. The stripe itself is unchanged (0.500 s at
+# NIC 2.0: the wave never touches the disk — exactly the tier's point).
+#
+# Timeline (async landing + 0.1 s capture drift, as in handcheck_l15.yaml):
+#   wave @3: 40.1 -> 40.6; demote @3: 40.6 -> 60.6   (completes)
+#   wave @6: 70.2 -> 70.7; demote @6: 70.7 -> would end 90.7
+#   host reboot after host it=8 fires at t=80.0 — INSIDE @6's demotion window:
+#     - the @6 piece is still in host DRAM -> WIPED (dram piece lost, its
+#       in-flight demotion aborts);
+#     - the @3 piece demoted at 60.6 -> host SSD -> SURVIVES the restart.
+#   own NODE loss after own it=8 fires at t=80.2 (2 captures x 0.1 drift):
+#     own down 20 s -> recovery at t=100.2, host alive again (up at 92.0).
+#     The @6 stripe has ZERO surviving pieces; newest surviving copy is the
+#     demoted @3 piece -> recovery FALLS TO THE L2 AGE: tier `crossjob_peer`
+#     at iteration 3, loss = 8 - 3 = 5 iterations.
+#
+# backstop: owner_push here (with no store_every set it never fires) so no L3
+# drain shares the slow donor disk with the @6 demotion — keeps the 20.000 s
+# demotion window exact. The drain-after-demotion chaining is pinned by
+# handcheck_l15.yaml (case A) and validator I11/I15 on the mini-C runs.
+
+simulation:
+  seeds: [7]
+  max_sim_s: 2000.0
+  engine: event
+
+cluster:
+  node_count: 10
+  gpu_cpu_bandwidth_gbps: 10.0
+  network_bandwidth_gbps: 2.0
+  local_ssd_bandwidth_gbps: 0.05   # demote = 1.0/0.05 = 20.000 s (the window)
+  object_store_bandwidth_gbps: 8.0
+
+model:
+  dram_host_slots: 1
+  dram_host_gb: 2.0
+
+classes:
+  own:
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 12
+    checkpoint_every: 3
+    kpeers: 1
+    rpo_s: 1000.0
+  host:
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 40
+    checkpoint_every: 100
+    kpeers: 0
+    rpo_s: 1000.0
+
+failures:
+  per_node_per_second: 0.0
+  weights: {process: 0.4, reboot: 0.15, node: 0.05, spot: 0.4}
+  restart_seconds: {process: 5.0, reboot: 12.0, node: 20.0, spot: 30.0}
+
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 999.0
+  backstop_s: 300.0
+
+controller:
+  slot_period_s: 30.0
+
+scheduled_failures:
+  - id: host-reboot-after-8   # t=80.0: INSIDE @6's demotion (70.7 -> 90.7)
+    job_id: host0             # -> @6 dram piece WIPED; demoted @3 survives
+    cohort: 0
+    after_iteration: 8
+    failure_type: reboot
+  - id: own-node-after-8      # t=80.2: recovery falls to the L2 age (@3)
+    job_id: own0
+    cohort: 0
+    after_iteration: 8
+    failure_type: node
+
+arms:
+  ideal:
+    ideal: true
+  ours_full:
+    kpeers: true
+    placement: peerdram
+    backstop: owner_push      # no drains: keep the slow donor disk exclusive
+                              # to the demotion so its 20.000 s window is exact

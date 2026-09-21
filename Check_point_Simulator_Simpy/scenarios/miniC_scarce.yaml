@@ -1,0 +1,129 @@
+# mini-C SCARCE: the donor-scarce A/B variant for centralized peer matching
+# (Mark D8). Same physics as miniC.yaml but the donor pool is STARVED so the
+# matching policy actually bites: mega is ~60% of cluster ranks (384 of 640), so
+# only ~256 donor nodes exist for EVERY job's cross-job flushes, and mega's own
+# k*m*cohorts wave demand dwarfs the pool. Under this pressure the difference
+# between a bounded random probe and a globally-informed board is measurable
+# (refusals, fallback flushes, durable fraction). ITERATION ONLY -- never paper
+# numbers (same disclaimer as miniC.yaml).
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 640
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 384
+    cohorts: 96
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 2
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 4
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 6
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 8
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+arms:
+  ours_full:                      # registry-plain (least-loaded) baseline
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+  ours_probe:                     # pre-centralized bounded-random daemon probe
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: probe
+  ours_spread:                    # registry + refinement (a): spread donor jobs
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    spread_jobs: true
+  ours_window:                    # registry + refinement (b)/stage-2: window bias
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    window_bias: true
+  ours_matched:                   # registry + both refinements
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    spread_jobs: true
+    window_bias: true

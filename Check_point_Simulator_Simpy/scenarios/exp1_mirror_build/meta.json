@@ -1,0 +1,91 @@
+{
+ "cadence_s": 60.0,
+ "checkpoint_every": 131,
+ "iteration_wall_s": 0.459538462,
+ "ar_base_s": 0.061538462,
+ "shard_gb_per_rank": 1.0,
+ "tcp_ceiling_applied": true,
+ "fabric_aware_coupling": false,
+ "tokens_per_iter": 4096,
+ "warmup_iters": 30,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "iterations": 600,
+ "arms": {
+  "off": {
+   "stream_gbps": null,
+   "nominal_gbps": null,
+   "fabric": "none",
+   "tcp_ceiling_applied": false,
+   "note": "baseline iteration time for both jobs",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_off.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_off_policy.json"
+  },
+  "eth1g": {
+   "stream_gbps": 0.091,
+   "nominal_gbps": 0.091,
+   "fabric": "eth1g",
+   "tcp_ceiling_applied": false,
+   "note": "physically separate 1 GbE card - the paper's premise (MEASURED rate)",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_eth1g.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_eth1g_policy.json"
+  },
+  "roce_tcp": {
+   "stream_gbps": 1.57,
+   "nominal_gbps": 1.57,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "note": "same NIC as training, kernel sockets - the AWS EFA/ENA case",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_roce_tcp.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_roce_tcp_policy.json"
+  },
+  "tc1": {
+   "stream_gbps": 0.125,
+   "nominal_gbps": 0.125,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "note": "tbf 1 gbit/s on the RoCE NIC's kernel egress",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc1.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc1_policy.json"
+  },
+  "tc5": {
+   "stream_gbps": 0.625,
+   "nominal_gbps": 0.625,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "note": "tbf 5 gbit/s",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc5.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc5_policy.json"
+  },
+  "tc10": {
+   "stream_gbps": 1.25,
+   "nominal_gbps": 1.25,
+   "fabric": "roce",
+   "tcp_ceiling_applied": false,
+   "note": "tbf 10 gbit/s",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc10.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc10_policy.json"
+  },
+  "tc25": {
+   "stream_gbps": 1.57,
+   "nominal_gbps": 3.125,
+   "fabric": "roce",
+   "tcp_ceiling_applied": true,
+   "note": "tbf 25 gbit/s",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc25.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc25_policy.json"
+  },
+  "tc50": {
+   "stream_gbps": 1.57,
+   "nominal_gbps": 6.25,
+   "fabric": "roce",
+   "tcp_ceiling_applied": true,
+   "note": "tbf 50 gbit/s",
+   "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc50.yaml",
+   "policy": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_tc50_policy.json"
+  }
+ }
+}

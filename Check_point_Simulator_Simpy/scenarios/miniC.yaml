@@ -1,0 +1,165 @@
+# mini-C: FAST-ITERATION HARNESS (Mark 2026-07-17: iterate in minutes, not days).
+# Preserves Setup C's physics at 1/20 size: mega=34% of 760 nodes (donor edge,
+# k caps ~3 vs requested 6), eviction-dominated be (per-job MTBF ~10min),
+# 5 risk/cost classes, wave contention. Failures ~66x TRUE rate so a ~35min
+# horizon has statistics. ITERATION ONLY — never paper numbers.
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 4
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 8
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 12
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:                    # reboot spec 2026-07-21: split old node:0.20 -> 3:1
+    process: 0.4
+    reboot: 0.15              # DRAM lost, local disk (own SSD + hosted) SURVIVES
+    node: 0.05               # true node replace: all node state gone
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0            # source-backed 120-300 s (Delta SC'25 / GCP / Meta)
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+# DURABILITY BACKSTOP (goal 2026-07-19): donors forward pieces to L3 after every
+# peer wave (fresh L3, piece-level stitch recovery). The legacy owner-push
+# whole-shard upload on the store_every cadence stays selectable per-arm
+# (ours_push) for the drain-vs-push results gate.
+backstop: donor_drain
+arms:
+  ours_full:                      # donor-drain L3 (default)
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+  ours_push:                      # legacy owner-push L3 (gate-5 comparator)
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    backstop: owner_push
+  peer_react:
+    kpeers: true
+    random_phases: true
+  local_only:
+    kpeers: false
+  gemini:
+    baseline: gemini
+  checkfreq:
+    baseline: checkfreq
+  megascale:
+    baseline: megascale
+  # --- centralized-matching A/B (Mark D8/D9). All four hold cadence, k and
+  #     phasing (slots) FIXED and vary ONLY the donor-matching policy, so the
+  #     delta is attributable to matching. ours_full == registry-plain baseline.
+  ours_probe:                     # pre-centralized bounded-random daemon probe
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: probe
+  ours_spread:                    # registry + refinement (a): spread donor jobs
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    spread_jobs: true
+  ours_window:                    # registry + refinement (b)/stage-2: window bias
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    window_bias: true
+  ours_matched:                   # registry + both refinements
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    matching: registry
+    spread_jobs: true
+    window_bias: true
+  # --- Stage 4 hybrid-placement A/B (Mark D5). ours_full == crossjob-always.
+  ours_injob:                     # in-job DRAM replication for EVERY class
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    placement: injob
+  ours_auto:                      # solver's eviction-hazard choice per class
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    placement: auto

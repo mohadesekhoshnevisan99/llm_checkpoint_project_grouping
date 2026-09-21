@@ -1,0 +1,64 @@
+# ============================================================================
+# POST-DICTION — NOT A SEALED PREDICTION. The GCP hardware ran FIRST
+# (2026-08-10 shakedown); this mirror was written AFTER, from its logs.
+# Protocol: EXP2_SPEC.md §6 / CL-018 / CL-019; format = exp2cl_seal.yaml.
+# See gcp_shakedown_mirror_f1.yaml for the full provenance ledger (shared
+# setup: 2-node A100 job A + donor B, 60 s cadence, 2 GiB shard, window 360 s).
+# ============================================================================
+# CELL F2 — node_reboot on job A's rank-0 node at t = 120 s; DRAM wiped,
+# harness restored from local SSD in 15.236 s.
+# EVENT-TYPE PROXY: the sim's trace vocabulary is {node_loss, process_kill}
+# only — `node_reboot` is rejected by normalize_failure_trace. The trace file
+# replays it as node_loss; recovery DURATIONS are F2's frozen measured
+# constants either way (restore_by_class keeps the honest class name;
+# restore_s carries the same number, which the proxy type falls back to).
+# Restore-tier bookkeeping does not mirror (sim wipes all local tiers);
+# durations do. Flagged in POSTDICTION.md for validation day.
+simulation: {seeds: [0], max_sim_s: 400.0, engine: event}
+cluster:
+  node_count: 3
+  gpu_cpu_bandwidth_gbps: 5.2          # UNMEASURED-on-GCP placeholder (see f1)
+  network_bandwidth_gbps: 2.5125      # MEASURED 20.1 Gbit/s VM-to-VM (GB/s units)
+  local_ssd_bandwidth_gbps: 0.161     # MEASURED pd seq write (PROVISIONAL)
+  object_store_bandwidth_gbps: 8.0
+classes:
+  A:
+    count: 1
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 1.073741824
+    iteration_seconds: 0.3253          # MEASURED F2 DDP wall median, n=1010
+    gradient_gb_per_rank: 0.0
+    iterations: 100000
+    checkpoint_every: 184              # round(60 s / 0.3253 s)
+    kpeers: 1
+    rpo_s: 60.0
+  B:
+    count: 1
+    ranks: 1
+    cohorts: 1
+    checkpoint_gb_per_rank: 1.073741824
+    iteration_seconds: 60.0
+    gradient_gb_per_rank: 0.0
+    iterations: 100000
+    checkpoint_every: 100000
+    kpeers: 0
+    rpo_s: 60.0
+failures:
+  per_node_per_second: 0.0
+  weights: {process: 1.0, node: 0.0, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 20.0, spot: 30.0}
+  trace_file: scenarios/gcp_shakedown_trace_f2.yaml
+  trace_window_s: 360.0
+  trace_node_map: {node30: A0, node31: A0}
+  # Frozen measured constants — block2/F2/exp2_constants_measured.yaml,
+  # rehearsal 2026-08-10T20:03:12Z. POST-DICTION (post-hoc by protocol).
+  trace_constants:
+    detect_s: 2.289
+    reprovision_delay_s: 9.219
+    restore_s: 15.236                  # ssd-tier restore, disk-bound (pd)
+    restore_by_class: {node_reboot: 15.236}   # CL-019; proxy type falls back
+                                              # to restore_s (same number)
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 2.5125}
+controller: {slot_period_s: 60.0}
+arms: {ours: {kpeers: true}}

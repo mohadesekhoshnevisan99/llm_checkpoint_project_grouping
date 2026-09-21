@@ -1,0 +1,22 @@
+# POST-DICTION artifact (NOT a sealed prediction — hardware ran first, 2026-08-10).
+# GCP A100 shakedown mirror, cell F2 (node_reboot): ONE injected reboot at
+# t = 120 s into the 360 s rehearsal window, target = job A's rank-0 node.
+#
+# EVENT-TYPE PROXY, stated loudly: the trace-replay validator
+# (run_scenario.py normalize_failure_trace) accepts ONLY {node_loss,
+# process_kill}. `node_reboot` is NOT in the sim's trace vocabulary, so this
+# file uses `node_loss` as a proxy. Consequences inside the sim: recovery
+# DURATION is unaffected (frozen constants below carry F2's measured numbers),
+# but the sim wipes ALL local copies where the real reboot wiped only DRAM
+# (the harness restored from local SSD). Restore-tier bookkeeping therefore
+# does not mirror; durations do. Flagged for validation day (see POSTDICTION.md).
+# Source of truth: checkpointing/realgpu_coefficient/results/block2_shakedown_gcp/
+#   block2/F2/{summary.json,supervisor.jsonl}.
+provenance:
+  label: POST-DICTION
+  hardware_run_utc: "2026-08-10"
+  source: block2_shakedown_gcp/block2/F2
+  hardware_event_type: node_reboot   # replayed as node_loss (proxy, see above)
+  window_s: 360.0
+events:
+  - {t_s: 120.0, type: node_loss, target: node30}

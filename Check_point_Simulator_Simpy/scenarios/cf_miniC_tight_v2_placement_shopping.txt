@@ -1,0 +1,26 @@
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Objective contains too many subexpressions. Consider vectorizing your CVXPY code to speed up compilation.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+/home/ext_seho4919_colorado_edu/llm_checkpoint_project/checkpointing/multilevel/joint_async_optimizer.py:1395: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  prob.solve(gp=True, solver=solver or cp.CLARABEL)
+[crossjob-first] rule: crossjob wherever FEASIBLE (duty: per-wave donor cap k_wave >= 2; rack: k distinct non-owner donor racks); infeasible -> cheapest of ['injob', 'local'] by the priced objective. Crossjob is never price-compared to the fallback menu when feasible.
+  mega         INFEASIBLE | duty: k_req=6 k_wave_cap=1 k_enact=1 duty_ok=False | rack_ok=vacuous (no rack pricing) -> chosen=injob
+               fallback comparison: *injob=3.153544   local=3.481170
+  fxl          FEASIBLE  | duty: k_req=6 k_wave_cap=10 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+  frontier     FEASIBLE  | duty: k_req=6 k_wave_cap=45 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+  standard     FEASIBLE  | duty: k_req=6 k_wave_cap=93 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+  be           FEASIBLE  | duty: k_req=6 k_wave_cap=379 k_enact=6 duty_ok=True | rack_ok=vacuous (no rack pricing) -> chosen=crossjob
+wrote scenarios/cf_miniC_tight_v2_placement_policy.json
+mega         [injob   ] k=1 every=1 (solved 60.16s, f2=0.016623Hz) store_every=5 slot=21.0s pred_flush=0.08s | failure-cost 0.0569 s/s -> halving lambda worth 7.29 GPU-s/s
+fxl          [crossjob] k=6 every=3 (solved 102.33s, f2=0.011053Hz) store_every=10 slot=0.0s pred_flush=0.89s | failure-cost 0.0181 s/s -> halving lambda worth 0.58 GPU-s/s
+frontier     [crossjob] k=6 every=7 (solved 145.62s, f2=0.00709Hz) store_every=15 slot=1.0s pred_flush=0.44s | failure-cost 0.0056 s/s -> halving lambda worth 0.04 GPU-s/s
+standard     [crossjob] k=6 every=10 (solved 145.84s, f2=0.006605Hz) store_every=20 slot=3.0s pred_flush=0.22s | failure-cost 0.0028 s/s -> halving lambda worth 0.01 GPU-s/s
+be           [crossjob] k=6 every=1 (solved 11.13s, f2=0.099206Hz) store_every=30 slot=9.0s pred_flush=0.09s | failure-cost 0.1203 s/s -> halving lambda worth 0.12 GPU-s/s
+[placement] mode=solve (search: 1 passes, 2 solves, converged=True)
+  mega         -> injob    | *injob=3.15354   local=3.48117
+  fxl          -> crossjob | *crossjob=3.15354
+  frontier     -> crossjob | *crossjob=3.15354
+  standard     -> crossjob | *crossjob=3.15354
+  be           -> crossjob | *crossjob=3.15354
+solver: {"method": "async_gp_v2", "iterations": 33, "objective": 3.1535439147334308, "B": [16960.0, 2544.0, 60.0], "overload_x": 0.04, "model_version": "v2", "dependency_api": "bounded", "symmetry_classes": 0, "v2": {"donor_duty_util": 0.0078, "fixed_point_drift": 5.3894556950978036e-05, "alpha": 0.043, "beta": 1.0, "eta": 0.9, "gamma": 0.0, "gamma_provisional": true, "peerdram_option": false, "gamma_dram": 0.0, "gamma_dram_doc": 1.2e-05, "dram_host_slots": 1, "drain_bytes_rate": 0.0, "store_binding": true, "duty_capacity_slots": 763.2, "store_demand_gbps": 13.483, "B3_store_gbps": 60.0}, "placement": {"mode": "solve", "by_class": {"mega": "injob", "fxl": "crossjob", "frontier": "crossjob", "standard": "crossjob", "be": "crossjob"}, "shopping": {"mega": {"injob": 3.153544, "local": 3.48117}, "fxl": {"crossjob": 3.153544}, "frontier": {"crossjob": 3.153544}, "standard": {"crossjob": 3.153544}, "be": {"crossjob": 3.153544}}, "search_passes": 1, "search_solves": 2, "search_converged": true, "placement_mode": "crossjob-first", "min_stripe": 2, "fallback_menu": ["injob", "local"], "feasibility": {"mega": {"k_req": 6, "k_wave_cap": 1, "k_enact": 1, "duty_ok": false, "donor_racks": null, "rack_ok": true, "feasible": false}, "fxl": {"k_req": 6, "k_wave_cap": 10, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "frontier": {"k_req": 6, "k_wave_cap": 45, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "standard": {"k_req": 6, "k_wave_cap": 93, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}, "be": {"k_req": 6, "k_wave_cap": 379, "k_enact": 6, "duty_ok": true, "donor_racks": null, "rack_ok": true, "feasible": true}}}}
+[v2] donor-duty util u=0.0078 (cap 763.2 slots, fixed-point drift 5.3894556950978036e-05); store demand 13.483/60.0 GB/s (binding=True); tail alpha=0.043 beta=1.0
+[v2] donor hosting tax OFF (gamma=0) (measured donor-drain rate 0 -> not fed; pass --measured-drain-gbps); term implemented, PROVISIONAL until gamma is calibrated.

@@ -1,0 +1,46 @@
+{
+  "schema": "runtime-peer-calibration-v1",
+  "source": "jobABC three-job smoke experiments",
+  "weights": {
+    "simulation_time": 1.0,
+    "fallback": 8.0,
+    "own_flush": 1.0,
+    "donor_failed": 2.0,
+    "flush_duration": 0.5
+  },
+  "observations": [
+    {
+      "name": "no_group",
+      "grouping": false,
+      "phasing": false,
+      "peer_rate": 0.0,
+      "fallback": 8,
+      "own_flush": 0,
+      "donor_failed": 0,
+      "flush_duration_s": 15.0,
+      "simulation_s": 221.63
+    },
+    {
+      "name": "group_phase0",
+      "grouping": true,
+      "phasing": false,
+      "peer_rate": 0.25,
+      "fallback": 6,
+      "own_flush": 14,
+      "donor_failed": 0,
+      "flush_duration_s": 45.0,
+      "simulation_s": 222.98
+    },
+    {
+      "name": "group_phased",
+      "grouping": true,
+      "phasing": true,
+      "peer_rate": 0.333,
+      "fallback": 4,
+      "own_flush": 10,
+      "donor_failed": 4,
+      "flush_duration_s": 33.76,
+      "simulation_s": 231.86
+    }
+  ]
+}

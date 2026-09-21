@@ -1,0 +1,37 @@
+# handcheck_gemini_evict.yaml — GEMINI (SOSP'23) THIRD tier: the remote
+# persistent store. Same shape as handcheck_gemini.yaml, but the eviction is
+# what the check is about (and gemini_store_every_s is shrunk from the 600 s
+# default so several uploads land inside a 500 s horizon).
+#
+# SIGNATURE to hand-check in the trace:
+#   * every `gemini_store_every_s` (here 40 s) each rank async-uploads its shard
+#     to the store (path "store_backstop"), BESIDE the every-iteration in-job
+#     peer-DRAM replication (path "gemini_replica") — the in-memory tiers are the
+#     fast path, the store is the durability backstop;
+#   * whole-job EVICTION wipes every holder node, so BOTH in-memory tiers die
+#     (own DRAM + all replicas) -> recovery falls to the STORE, NOT to
+#     initial_state: recovery_source_tiers must contain a "store" entry.
+#     Without tier 3 (the pre-fix strawman) this same run was total loss.
+#   * the store copy is stale by <= the upload cadence, so the job still rolls
+#     back — just to the last uploaded iteration instead of to zero.
+simulation:
+  seeds: [7]
+  max_sim_s: 500.0
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+classes:
+  small:    {count: 1, ranks: 3, cohorts: 3, checkpoint_gb_per_rank: 1.0, iteration_seconds: 4.0, iterations: 60, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+  frontier: {count: 1, ranks: 4, cohorts: 4, checkpoint_gb_per_rank: 1.0, iteration_seconds: 4.0, iterations: 60, checkpoint_every: 2, kpeers: 2, gradient_gb_per_rank: 0.5, rpo_s: 120.0}
+failures:
+  per_node_per_second: 5.0e-3
+  weights: {process: 0.5, node: 0.5, spot: 0.0}
+  restart_seconds: {process: 5.0, node: 10.0, spot: 15.0}
+preemption: {class_prefix: small, every_s: 60.0, seed: 3}   # default model: per_job_hazard
+store: {in_gbps: 500.0, out_gbps: 500.0, disk_gbps: 500.0, stream_gbps: 1.0}
+controller: {slot_period_s: 30.0}
+arms:
+  gemini: {baseline: gemini, gemini_store_every_s: 40.0}

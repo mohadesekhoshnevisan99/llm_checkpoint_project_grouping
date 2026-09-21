@@ -1,0 +1,90 @@
+# mini-C DONOR-LOSS STRESS variant (goal 2026-07-19, gate 5d). Deliberately
+# DENSE and high-loss so the L3 backstop is actually EXERCISED: mini-C's full
+# 760-node / k=6 regime strides so widely that the L2 peer set is essentially
+# always complete and L3 stays dormant (documented negative). Here the donor
+# pool is TIGHT (few jobs, small nodes, k=3) so a rank's k donors are reused
+# across consecutive waves; a NODE-dominated, elevated failure rate then kills
+# those donors OFTEN between waves, so the peer set at recent iterations goes
+# incomplete and recovery must fall to L3 — stitch (k-1 live peers + 1 L3 piece)
+# under donor_drain, whole-store copy under owner_push. Drain's L3 is fresh
+# every wave; owner_push's store copy is store_every stale — that gap is the
+# gate-5d/5b signal. ITERATION ONLY — never paper numbers.
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 64
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  guar:                     # owners that suffer node loss and must recover
+    count: 4
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 10.0
+    iterations: 150
+    checkpoint_every: 2
+    kpeers: 3
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  don:                      # the tight donor pool (other-job hosts)
+    count: 4
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 12.0
+    iterations: 130
+    checkpoint_every: 5
+    kpeers: 3
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 1.5e-3
+  weights:                          # reboot spec 2026-07-21: reboot-aware, but this
+    process: 0.1                     # scenario's PURPOSE is donor-piece destruction, so
+    reboot: 0.15                     # reboot (donor pieces SURVIVE) is a minority slice
+    node: 0.55                       # node loss still DOMINATES -> wipes donor pieces
+    spot: 0.2
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0                    # source-backed 120-300 s (Delta SC'25 / GCP / Meta)
+    node: 20.0
+    spot: 30.0
+store:
+  in_gbps: 60.0
+  out_gbps: 60.0
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  ours_full:
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+  ours_push:
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+    backstop: owner_push
+  ours_parity:                      # STRETCH: +1 XOR parity, single-loss recon
+    kpeers: true                    # peer-side (no L3). Honest negative: alone it
+    slots: true                     # is dominated by L3 drain under multi-donor
+    controller_epoch_s: 120.0       # loss (no durable tier for 2+ concurrent).
+    backstop: parity
+  ours_parity_cutoff:               # Sam's cutoff: same k+1 stripe, wave completes
+    kpeers: true                    # at the k-th landed piece, slowest straggler
+    slots: true                     # detaches. Protection must EQUAL/BEAT drain:
+    controller_epoch_s: 120.0       # same-iteration single-loss recon, no L3.
+    backstop: parity_cutoff

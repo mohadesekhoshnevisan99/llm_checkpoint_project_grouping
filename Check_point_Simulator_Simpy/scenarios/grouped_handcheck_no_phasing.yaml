@@ -1,0 +1,62 @@
+simulation:
+  seeds:
+  - 7
+cluster:
+  node_count: 100
+  gpu_cpu_bandwidth_gbps: 12.5
+  network_bandwidth_gbps: 1.85
+  local_ssd_bandwidth_gbps: 0.29
+  object_store_bandwidth_gbps: 8.0
+classes:
+  alpha:
+    count: 1
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+  bravo:
+    count: 1
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+  be:
+    count: 1
+    ranks: 4
+    cohorts: 4
+    checkpoint_gb_per_rank: 1.0
+    iteration_seconds: 10.0
+    iterations: 24
+    checkpoint_every: 3
+    kpeers: 2
+    rpo_s: 120.0
+failures:
+  per_node_per_second: 0.0
+  weights:
+    process: 0.4
+    node: 0.2
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    node: 20.0
+    spot: 30.0
+store:
+  in_gbps: 500.0
+  out_gbps: 500.0
+  disk_gbps: 500.0
+  stream_gbps: 1.0
+controller:
+  slot_period_s: 30.0
+arms:
+  baseline_no_phasing:
+    kpeers: true
+    slots: false
+    controller_epoch_s: 0

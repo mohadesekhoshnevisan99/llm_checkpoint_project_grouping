@@ -1,0 +1,32 @@
+{
+ "name": "eth1g",
+ "scenario": "/home/ext_seho4919_colorado_edu/llm_checkpoint_project/Check_point_Simulator_Simpy/scenarios/exp1_mirror_build/exp1_mirror_eth1g.yaml",
+ "solver": {
+  "method": "hand_set_mirror_of_exp1_scenario.yaml",
+  "note": "not a solved policy: it enacts the HARDWARE's hand-set configuration (A: 60 s cadence, k=1, cross-job; B: no checkpointing)"
+ },
+ "flags": {
+  "kpeers": true,
+  "slots": false,
+  "backstop": "owner_push"
+ },
+ "jobs": {
+  "A0": {
+   "class": "A",
+   "kpeers": 1,
+   "checkpoint_every": 131,
+   "capture_every": null,
+   "store_every": null,
+   "placement": "crossjob",
+   "enacted_interval_s": 60.2
+  },
+  "B0": {
+   "class": "B",
+   "kpeers": 0,
+   "checkpoint_every": 601,
+   "capture_every": null,
+   "store_every": null,
+   "placement": "local"
+  }
+ }
+}

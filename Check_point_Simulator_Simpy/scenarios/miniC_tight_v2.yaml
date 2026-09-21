@@ -1,0 +1,137 @@
+# mini-C TIGHT (reboot-aware) -- the DONOR-SCARCE regime boundary for the SELFISH
+# per-job baseline (controller-vs-daemon gap #1). Built from miniC.yaml (SAME
+# reboot failure weights, SAME store/controller/preemption, event engine) so the
+# perjob-vs-joint tight comparison is apples-to-apples with the reboot mini-C
+# staircase. ONE axis is changed from base miniC -- donor scarcity:
+#   DONOR-SCARCE: mega is ~60% of cluster ranks (256 of 424) -> only ~168 donor
+#       ranks remain, so the per-wave k budget binds HARD (mega k caps at 1 vs 3
+#       in base miniC) and every job competes for the few donor slots. Others
+#       trimmed proportionally (fxl 4->1, frontier 8->2, standard 12->6; be kept
+#       at 12 for the eviction dynamics).
+# WHY THIS SEPARATES joint FROM perjob: the SOLVED cadences barely move (at
+# mini-C scale no shared BUDGET binds -- store demand stays well under B3, donor
+# DUTY util stays ~1% because flushes are sub-second), so the two solvers emit
+# near-identical frequencies. The gap opens in the DAEMON: under a starved donor
+# pool, the joint controller's COORDINATED slots stagger the peer waves so donors
+# are free when each job needs them, while the selfish baseline's UNCOORDINATED
+# random phases collide -> donor refusals / local fallbacks (the refusal/grant
+# counters are where selfishness bleeds). Store kept ample (60 GB/s) so donor
+# pressure is the SOLE scarce axis, not a store-saturation confound.
+# ITERATION ONLY -- never paper numbers (same disclaimer as miniC.yaml).
+simulation:
+  seeds:
+  - 7
+  - 11
+  - 13
+  - 17
+  - 23
+  max_sim_s: 14400.0
+  engine: event
+cluster:
+  node_count: 760
+  gpu_cpu_bandwidth_gbps: 40.0
+  network_bandwidth_gbps: 50.0
+  local_ssd_bandwidth_gbps: 6.0
+  object_store_bandwidth_gbps: 8.0
+classes:
+  # mega unchanged from miniC (256 ranks) -- the OTHER classes shrink, lifting
+  # mega to ~60% of the 424 total ranks and starving the donor pool.
+  mega:
+    count: 1
+    ranks: 256
+    cohorts: 64
+    checkpoint_gb_per_rank: 4.0
+    iteration_seconds: 60.0
+    iterations: 30
+    checkpoint_every: 2
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  fxl:
+    count: 1
+    ranks: 64
+    cohorts: 16
+    checkpoint_gb_per_rank: 32.0
+    iteration_seconds: 30.0
+    iterations: 60
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 60.0
+    weights_gb_per_rank: 4.0
+  frontier:
+    count: 2
+    ranks: 16
+    cohorts: 8
+    checkpoint_gb_per_rank: 16.0
+    iteration_seconds: 20.0
+    iterations: 90
+    checkpoint_every: 8
+    kpeers: 6
+    rpo_s: 90.0
+    weights_gb_per_rank: 4.0
+  standard:
+    count: 6
+    ranks: 8
+    cohorts: 8
+    checkpoint_gb_per_rank: 8.0
+    iteration_seconds: 15.0
+    iterations: 120
+    checkpoint_every: 15
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+  be:
+    count: 12
+    ranks: 2
+    cohorts: 2
+    checkpoint_gb_per_rank: 3.2
+    iteration_seconds: 10.0
+    iterations: 180
+    checkpoint_every: 3
+    kpeers: 6
+    rpo_s: 120.0
+    weights_gb_per_rank: 4.0
+failures:
+  per_node_per_second: 3.0e-06
+  weights:                    # reboot spec 2026-07-21: split old node:0.20 -> 3:1
+    process: 0.4
+    reboot: 0.15              # DRAM lost, local disk (own SSD + hosted) SURVIVES
+    node: 0.05               # true node replace: all node state gone
+    spot: 0.4
+  restart_seconds:
+    process: 5.0
+    reboot: 180.0            # source-backed 120-300 s (Delta SC'25 / GCP / Meta)
+    node: 20.0
+    spot: 30.0
+preemption:
+  class_prefix: be
+  every_s: 50.0
+  model: per_job_hazard
+  seed: 3
+store:
+  in_gbps: 60.0          # ample (matches base miniC): donor scarcity is the SOLE
+  out_gbps: 60.0         # tight axis -- store never binds (demand ~1.1/60 GB/s)
+  disk_gbps: 60.0
+  stream_gbps: 2.0
+  backstop_s: 300.0
+controller:
+  slot_period_s: 60.0
+backstop: donor_drain
+arms:
+  ideal:
+    ideal: true
+  ours_full:
+    kpeers: true
+    slots: true
+    controller_epoch_s: 120.0
+  peer_react:
+    kpeers: true
+    random_phases: true
+  local_only:
+    kpeers: false
+  gemini:
+    baseline: gemini
+  checkfreq:
+    baseline: checkfreq
+  megascale:
+    baseline: megascale

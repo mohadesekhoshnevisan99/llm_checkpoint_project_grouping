@@ -1,0 +1,14 @@
+{
+  "slot_s": 5,
+  "horizon_s": 240,
+  "periods_s": [30, 60, 120, 240],
+  "headroom": 0.9,
+  "network_gbps": 4.0,
+  "store_gbps": 2.0,
+  "store_stream_gbps": 0.25,
+  "jobs": [
+    {"id": "job-000", "size_gb": 2, "nic_gbps": 2, "donor_gbps": 0.2, "free_ssd_gb": 80, "capture_s": 1, "failure_rate_s": 0.0005555555555555556, "store_failure_rate_s": 0.000011574074074074073, "restart_s": 20, "weight": 1, "overlap": 0.08},
+    {"id": "job-001", "size_gb": 4, "nic_gbps": 2, "donor_gbps": 2, "free_ssd_gb": 80, "capture_s": 1, "failure_rate_s": 0.00037037037037037035, "store_failure_rate_s": 0.000011574074074074073, "restart_s": 20, "weight": 2, "overlap": 0.08},
+    {"id": "job-002", "size_gb": 6, "nic_gbps": 2, "donor_gbps": 2, "free_ssd_gb": 80, "capture_s": 1, "failure_rate_s": 0.0002777777777777778, "store_failure_rate_s": 0.000011574074074074073, "restart_s": 20, "weight": 3, "overlap": 0.08}
+  ]
+}
